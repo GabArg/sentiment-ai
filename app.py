@@ -16,7 +16,9 @@ import streamlit as st
 
 from src.ai_provider import DEFAULT_CEREBRAS_MODEL, generate_report_with_fallback
 from src.analytics import calculate_metrics, sentiment_distribution
-from src.batch import analyze_dataframe
+from src.batch import analyze_dataframe, analyze_dataframe_hybrid, estimate_hybrid_reviews
+from src.hybrid import evaluate_hybrid_text
+from src.hybrid_config import HybridRoutingConfig, load_hybrid_config
 from src.model import SentimentPredictor
 from src.pareto import calculate_pareto, extract_negative_topics
 from src.preprocessing import CSVValidationError, read_csv_upload
@@ -25,6 +27,7 @@ from src.reporting import (
     generate_deterministic_report,
     prepare_ai_context,
 )
+from src.sentiment_review import CerebrasSentimentReviewProvider
 
 
 MAX_TEXT_LENGTH = 5_000
@@ -41,6 +44,10 @@ st.set_page_config(
 @st.cache_resource(show_spinner="Cargando modelo local…")
 def get_predictor() -> SentimentPredictor:
     return SentimentPredictor.load()
+
+
+def get_hybrid_config() -> HybridRoutingConfig:
+    return load_hybrid_config(st.secrets)
 
 
 def get_batch_results() -> pd.DataFrame | None:
@@ -161,6 +168,158 @@ def render_batch() -> None:
         )
 
 
+def render_individual_controlled() -> None:
+    config = get_hybrid_config()
+    if not config.enabled:
+        render_individual()
+        return
+    st.header("Análisis individual")
+    st.write("La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado.")
+    with st.form("individual_form"):
+        text = st.text_area("Comentario", max_chars=MAX_TEXT_LENGTH, height=180)
+        submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
+    if not submitted:
+        return
+    if len(text.strip()) < 2:
+        st.warning("Ingresá un texto de al menos 2 caracteres.")
+        return
+    try:
+        predictor = get_predictor()
+        prediction = predictor.predict_one(text)
+        result = evaluate_hybrid_text(
+            text,
+            predictor,
+            config=config.router_config(),
+            provider=CerebrasSentimentReviewProvider(
+                api_key=_streamlit_cerebras_key(),
+                max_retries=0,
+            ),
+        )
+    except Exception:
+        st.error("No fue posible analizar el texto con los artefactos locales.")
+        return
+    left, right = st.columns([1, 2])
+    with left:
+        st.metric("Sentimiento", result.final_prediction)
+        st.metric("Confianza", f"{prediction.confidence:.1%}")
+        origin = "Revisión híbrida" if result.review_state in {"reviewed", "disagreement"} else "Modelo local"
+        st.caption(f"Origen: {origin}")
+    with right:
+        chart_data = sentiment_probability_frame(prediction.probabilities)
+        figure = px.bar(
+            chart_data,
+            x="probability",
+            y="sentiment",
+            orientation="h",
+            color="sentiment",
+            color_discrete_map=SENTIMENT_COLORS,
+            text=chart_data["probability"].map(lambda value: f"{value:.1%}"),
+            labels={"probability": "Probabilidad local", "sentiment": ""},
+        )
+        figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
+        figure.update_xaxes(tickformat=".0%", range=[0, 1])
+        st.plotly_chart(figure, use_container_width=True)
+    st.caption("La confianza mostrada pertenece al modelo local y no es una garantía de corrección.")
+    with st.expander("Detalle de revisión"):
+        st.write(f"Predicción local: **{result.local_prediction}**")
+        st.write(f"Confianza local: **{result.local_confidence:.1%}**")
+        st.write(f"Estado: **{result.review_state}**")
+        if result.review_reasons:
+            st.write(f"Motivo: `{', '.join(result.review_reasons)}`")
+        if result.review_prediction:
+            st.write(f"Second check: **{result.review_prediction}**")
+        if result.review_latency_ms is not None:
+            st.write(f"Latencia externa: **{result.review_latency_ms:.0f} ms**")
+    if result.fallback_used:
+        st.warning("Se utilizó la predicción local porque la revisión externa no estuvo disponible.")
+
+
+def render_batch_controlled() -> None:
+    config = get_hybrid_config()
+    if not config.enabled:
+        render_batch()
+        return
+    st.header("Análisis masivo")
+    st.write("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
+    uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
+    if uploaded is None:
+        st.info("Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV.")
+        return
+    try:
+        frame = read_csv_upload(uploaded.getvalue())
+    except CSVValidationError as exc:
+        st.error(str(exc))
+        return
+    st.success(f"CSV válido: {len(frame):,} registros y {len(frame.columns)} columnas detectadas.")
+    st.dataframe(frame.head(20), width="stretch", hide_index=True)
+    column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
+    try:
+        requested, allowed, _ = estimate_hybrid_reviews(frame, column, get_predictor(), config)
+        st.info(
+            f"Revisiones previstas: {requested:,}. Máximo a ejecutar: {allowed:,}. "
+            f"Costo orientativo observado: ~USD {allowed * config.estimated_review_cost_usd:.4f}. "
+            "Es una estimación; el costo real depende de tokens, modelo y precios."
+        )
+    except (CSVValidationError, ValueError):
+        requested = allowed = 0
+    if st.button("Procesar comentarios", type="primary", width="stretch"):
+        try:
+            progress = st.progress(0, text="La clasificación local se ejecuta primero…")
+            pacing_status = st.empty()
+
+            def on_progress(current, total):
+                progress.progress(current / max(total, 1), text=f"Revisando con IA {current} de {total}")
+
+            def on_pacing(_wait):
+                pacing_status.info("Esperando ventana de Cerebras para continuar…")
+
+            results, dropped, summary = analyze_dataframe_hybrid(
+                frame,
+                column,
+                get_predictor(),
+                CerebrasSentimentReviewProvider(api_key=_streamlit_cerebras_key(), max_retries=1),
+                config,
+                on_progress=on_progress,
+                on_pacing=on_pacing,
+            )
+            progress.empty()
+            pacing_status.empty()
+            st.session_state["batch_results"] = results
+            st.session_state["hybrid_summary"] = summary
+            st.session_state.pop("ai_report", None)
+            st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
+            if summary["review_budget_exceeded"]:
+                st.warning(f"{summary['review_budget_exceeded']:,} comentarios adicionales conservaron la clasificación local por límite de revisión IA.")
+        except (CSVValidationError, ValueError) as exc:
+            st.error(str(exc))
+        except Exception:
+            st.error("No fue posible completar el análisis masivo.")
+    results = get_batch_results()
+    if results is not None:
+        st.subheader("Resultados procesados")
+        display = results.copy()
+        percentage_columns = [name for name in display if name.startswith("probability_")]
+        for name in ["confidence", "local_confidence"]:
+            if name in display:
+                display[name] = display[name].map(lambda value: f"{value:.1%}")
+        for name in percentage_columns:
+            display[name] = display[name].map(lambda value: f"{value:.1%}")
+        st.dataframe(display.head(100), width="stretch", hide_index=True)
+        summary = st.session_state.get("hybrid_summary")
+        if isinstance(summary, dict):
+            st.caption(
+                f"Trazabilidad: local_only {summary['local_only']:,} · reviewed {summary['reviewed']:,} · "
+                f"disagreement {summary['disagreement']:,} · fallback {summary['fallback']:,}"
+            )
+        st.download_button(
+            "Descargar CSV procesado",
+            data=results.to_csv(index=False).encode("utf-8-sig"),
+            file_name="sentiment_analysis_results.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+
+
 def render_dashboard() -> None:
     st.header("Dashboard")
     try:
@@ -169,6 +328,9 @@ def render_dashboard() -> None:
         st.info(str(exc))
         return
     render_metric_cards(metrics)
+    if "review_state" in results.columns:
+        states = results["review_state"].value_counts(normalize=True).mul(100)
+        st.caption("Trazabilidad híbrida: " + " · ".join(f"{state} {value:.1f}%" for state, value in states.items()))
     distribution = sentiment_distribution(metrics)
     left, right = st.columns(2)
     with left:
@@ -303,6 +465,7 @@ def render_report() -> None:
 
 
 def render_about() -> None:
+    hybrid_enabled = get_hybrid_config().enabled
     st.header("Acerca del proyecto")
     st.markdown(
         """
@@ -316,7 +479,10 @@ def render_about() -> None:
         """
     )
     st.subheader("Privacidad")
-    st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. Nunca se envían comentarios, el CSV ni sus otras columnas.")
+    if hybrid_enabled:
+        st.write("La clasificación local ocurre primero. Sólo comentarios derivados pueden enviarse anonimizados a Cerebras para second check; nunca se envían otras columnas del CSV. El informe IA permanece separado y sólo recibe agregados.")
+    else:
+        st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. Nunca se envían comentarios, el CSV ni sus otras columnas.")
 
 
 st.markdown(
@@ -350,8 +516,8 @@ with st.sidebar:
         st.success(f"Lote activo: {len(get_batch_results()):,} comentarios")
 
 pages = {
-    "Análisis individual": render_individual,
-    "Análisis masivo": render_batch,
+    "Análisis individual": render_individual_controlled,
+    "Análisis masivo": render_batch_controlled,
     "Dashboard": render_dashboard,
     "Pareto 80/20": render_pareto,
     "Informe": render_report,

@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.model import SentimentPredictor
+from src.hybrid import evaluate_hybrid_observation, fallback_for_budget
+from src.hybrid_config import HybridRoutingConfig
+from src.model import PredictionObservability, SentimentPredictor
 from src.preprocessing import prepare_text_column
+from src.rate_pacer import RatePacer
+from src.review_router import route_prediction
+from src.sentiment_review import SentimentReviewProvider
 
 
 def analyze_dataframe(
@@ -16,4 +21,99 @@ def analyze_dataframe(
     prepared, dropped = prepare_text_column(frame, text_column)
     predictions = predictor.predict_batch(prepared["text"].tolist())
     return predictions, dropped
+
+
+def estimate_hybrid_reviews(
+    frame: pd.DataFrame,
+    text_column: str,
+    predictor: SentimentPredictor,
+    config: HybridRoutingConfig,
+) -> tuple[int, int, int]:
+    """Estimate requested and capped reviews locally, without provider calls."""
+    prepared, dropped = prepare_text_column(frame, text_column)
+    predictions = predictor.predict_batch(prepared["text"].tolist())
+    router_config = config.router_config()
+    requested = sum(
+        float(row.confidence) < router_config.threshold_for(str(row.sentiment))
+        for row in predictions.itertuples(index=False)
+    )
+    return requested, min(requested, config.max_reviews_per_batch), dropped
+
+
+def analyze_dataframe_hybrid(
+    frame: pd.DataFrame,
+    text_column: str,
+    predictor: SentimentPredictor,
+    provider: SentimentReviewProvider,
+    config: HybridRoutingConfig,
+    pacer: RatePacer | None = None,
+    on_progress=None,
+    on_pacing=None,
+) -> tuple[pd.DataFrame, int, dict[str, int | float]]:
+    """Run local inference first, then sequential budgeted second checks."""
+    prepared, dropped = prepare_text_column(frame, text_column)
+    predictions = predictor.predict_batch(prepared["text"].tolist())
+    router_config = config.router_config()
+    decisions = []
+    observations = []
+    for row in predictions.itertuples(index=False):
+        probabilities = sorted(
+            ((label, float(getattr(row, f"probability_{label.casefold()}"))) for label in predictor.classes),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+        observation = PredictionObservability(
+            local_prediction=probabilities[0][0],
+            local_confidence=probabilities[0][1],
+            second_best_class=probabilities[1][0],
+            second_best_probability=probabilities[1][1],
+            prediction_margin=probabilities[0][1] - probabilities[1][1],
+        )
+        observations.append(observation)
+        decisions.append(route_prediction(observation, router_config))
+
+    requested_total = sum(decision.should_review for decision in decisions)
+    provider_available = bool(getattr(provider, "api_key", True))
+    allowed_total = min(requested_total, config.max_reviews_per_batch) if provider_available else requested_total
+    active_pacer = pacer or RatePacer(config.max_requests, config.window_seconds, config.pacing_margin_seconds)
+    review_number = 0
+    records = []
+    for row, observation, decision in zip(predictions.to_dict("records"), observations, decisions):
+        if decision.should_review:
+            if review_number >= allowed_total:
+                result = fallback_for_budget(observation.local_prediction, observation.local_confidence, observation.prediction_margin, decision)
+            else:
+                review_number += 1
+                if on_progress is not None:
+                    on_progress(review_number, allowed_total)
+                if provider_available:
+                    active_pacer.wait_if_needed(on_pacing)
+                result = evaluate_hybrid_observation(row["text"], observation, decision, provider)
+        else:
+            result = evaluate_hybrid_observation(row["text"], observation, decision, None)
+        row["local_sentiment"] = result.local_prediction
+        row["local_confidence"] = result.local_confidence
+        row["review_requested"] = result.review_requested
+        row["review_reasons"] = "|".join(result.review_reasons)
+        row["review_state"] = result.review_state
+        row["review_sentiment"] = result.review_prediction
+        row["review_provider"] = result.review_provider
+        row["review_model"] = result.review_model
+        row["review_latency_ms"] = result.review_latency_ms
+        row["fallback_used"] = result.fallback_used
+        row["review_error_code"] = result.error_code
+        row["sentiment"] = result.final_prediction
+        records.append(row)
+    results = pd.DataFrame.from_records(records)
+    summary = {
+        "review_requested": requested_total,
+        "reviews_attempted": review_number,
+        "review_budget_exceeded": max(0, requested_total - allowed_total),
+        "local_only": int((results["review_state"] == "local_only").sum()),
+        "reviewed": int((results["review_state"] == "reviewed").sum()),
+        "disagreement": int((results["review_state"] == "disagreement").sum()),
+        "fallback": int((results["review_state"] == "fallback_local").sum()),
+        "estimated_cost_usd": allowed_total * config.estimated_review_cost_usd,
+    }
+    return results, dropped, summary
 
