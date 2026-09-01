@@ -1,0 +1,33 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary and generated files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+~$*
+dist/
+build/
+
+# Model artifacts are intentionally versioned for an autonomous demo:
+# models/sentiment_model.joblib
+# models/tfidf_vectorizer.joblib
