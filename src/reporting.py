@@ -95,12 +95,12 @@ def prepare_ai_context(
 ) -> dict[str, object]:
     topics = [
         {
-            "topic": str(row.topic),
+            "topic_rank": rank,
             "frequency": int(row.frequency),
             "percentage": round(float(row.percentage), 2),
             "cumulative_percentage": round(float(row.cumulative_percentage), 2),
         }
-        for _, row in pareto.head(10).iterrows()
+        for rank, (_, row) in enumerate(pareto.head(10).iterrows(), start=1)
     ]
     context: dict[str, object] = {
         "total_comments": int(metrics["total"]),
@@ -111,7 +111,7 @@ def prepare_ai_context(
         "mean_model_confidence": round(float(metrics["mean_confidence"]), 4),
         "critical_negative_count": int(metrics["critical_negative_count"]),
         "negative_topic_pareto": topics,
-        "methodology": "TF-IDF + logistic regression; negative topics are document-frequency n-grams.",
+        "methodology": "TF-IDF + logistic regression; Pareto frequencies come from document-frequency n-grams. Topic labels are withheld for privacy.",
     }
     return context
 

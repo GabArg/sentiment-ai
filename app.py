@@ -254,7 +254,7 @@ def _streamlit_cerebras_key() -> str | None:
 def render_report() -> None:
     st.header("Informe ejecutivo")
     try:
-        results, metrics, pareto = get_analysis()
+        _, metrics, pareto = get_analysis()
     except ValueError as exc:
         st.info(str(exc))
         return
@@ -316,7 +316,7 @@ def render_about() -> None:
         """
     )
     st.subheader("Privacidad")
-    st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas agregadas y temas calculados. Nunca se envían comentarios, el CSV ni sus otras columnas.")
+    st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. Nunca se envían comentarios, el CSV ni sus otras columnas.")
 
 
 st.markdown(

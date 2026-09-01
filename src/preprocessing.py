@@ -28,13 +28,12 @@ def read_csv_upload(source: bytes | BinaryIO, max_bytes: int = MAX_UPLOAD_BYTES)
     if len(raw) > max_bytes:
         raise CSVValidationError(f"The CSV exceeds the {max_bytes // (1024 * 1024)} MB limit.")
 
-    errors: list[str] = []
     for encoding in ("utf-8-sig", "utf-8", "latin-1"):
         try:
             frame = pd.read_csv(BytesIO(raw), sep=None, engine="python", encoding=encoding)
             break
-        except (UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
-            errors.append(str(exc))
+        except (UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError):
+            continue
     else:
         raise CSVValidationError("The CSV encoding or delimiter could not be detected.") from None
 
@@ -50,14 +49,13 @@ def prepare_text_column(frame: pd.DataFrame, column: str) -> tuple[pd.DataFrame,
     if column not in frame.columns:
         raise CSVValidationError(f"Column '{column}' does not exist.")
     values = frame[column]
-    missing = int(values.isna().sum())
     clean = values.fillna("").astype(str).str.strip()
     valid_mask = clean.str.len() >= 2
     dropped = int((~valid_mask).sum())
     prepared = pd.DataFrame({"text": clean[valid_mask]}).reset_index(drop=True)
     if prepared.empty:
         raise CSVValidationError("The selected column has no valid text values.")
-    return prepared, max(missing, dropped)
+    return prepared, dropped
 
 
 def anonymize_text(text: str, max_chars: int = 240) -> str:
@@ -67,4 +65,3 @@ def anonymize_text(text: str, max_chars: int = 240) -> str:
     value = LONG_ID_PATTERN.sub("[ID]", value)
     value = re.sub(r"\s+", " ", value).strip()
     return value[:max_chars]
-
