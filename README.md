@@ -42,6 +42,8 @@ La v2 no reentrena el modelo. Incluye un benchmark externo/manual reproducible d
 
 La confianza es la probabilidad interna asignada por el clasificador, no una garantía de acierto. Existen errores con confianza igual o superior a 80 %, por lo que ese valor no debe interpretarse como certeza ni como regla suficiente para una futura arquitectura híbrida. La metodología, observabilidad y discrepancia de preprocessing están documentadas en [docs/quality-evaluation.md](docs/quality-evaluation.md).
 
+La arquitectura híbrida de Fase 2 existe únicamente como experimento desacoplado: evalúa incertidumbre, permite un second check estructurado y aplica fallback local, pero no reemplaza la predicción visible ni llama Cerebras desde la UI. Véase [docs/hybrid-classification.md](docs/hybrid-classification.md).
+
 ### Prueba multilingüe exploratoria
 
 | Idioma | Positivo | Negativo | Neutro |
@@ -79,10 +81,15 @@ src/analytics.py               métricas de negocio
 src/pareto.py                  temas y cálculo 80/20
 src/reporting.py               prompt e informe determinístico
 src/ai_provider.py             integración opcional y fallback
+src/review_router.py           reglas experimentales de incertidumbre
+src/sentiment_review.py        contrato y adaptador de second check
+src/hybrid.py                  comparación local/híbrida sin activar la UI
+src/router_evaluation.py       evaluación offline de estrategias
 models/                        artefactos joblib originales
 tests/                         pruebas unitarias y funcionales
 tests/fixtures/                benchmark manual de evaluación, nunca de entrenamiento
 docs/quality-evaluation.md     baseline, observabilidad y preprocessing
+docs/hybrid-classification.md  arquitectura híbrida, privacidad y fallback
 .streamlit/secrets.toml.example
 ```
 
@@ -109,6 +116,7 @@ pip install -r requirements-dev.txt
 pytest --cov=src --cov-report=term-missing
 python -m compileall app.py src tests
 python -m src.evaluation
+python -m src.router_evaluation
 ```
 
 ## Configuración opcional de Cerebras
