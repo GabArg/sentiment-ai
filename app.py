@@ -1,182 +1,368 @@
-"""Interfaz Streamlit para inferencia local de sentimiento.
+"""Sentiment AI v2 — customer feedback analytics in Streamlit.
 
-Versión recuperada y modificada del proyecto grupal H12-25-L-Equipo-72.
-Distribuida bajo GNU GPL v3.0. Consulte ATTRIBUTION.md y LICENSE.
+Recovered from team project H12-25-L-Equipo-72 and evolved for portfolio use.
+See ATTRIBUTION.md and LICENSE (GPL-3.0).
 """
 
 from __future__ import annotations
 
-from html import escape
-from pathlib import Path
-from typing import Any
+import os
 
-import joblib
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 
-
-APP_TITLE = "Sentiment AI"
-PROJECT_DIR = Path(__file__).resolve().parent
-MODEL_PATH = PROJECT_DIR / "models" / "sentiment_model.joblib"
-VECTORIZER_PATH = PROJECT_DIR / "models" / "tfidf_vectorizer.joblib"
-MAX_TEXT_LENGTH = 5_000
-
-
-st.set_page_config(
-    page_title="Sentiment AI | Análisis de sentimientos",
-    page_icon="◉",
-    layout="centered",
-    initial_sidebar_state="collapsed",
+from src.ai_provider import DEFAULT_CEREBRAS_MODEL, generate_report_with_fallback
+from src.analytics import calculate_metrics, sentiment_distribution
+from src.batch import analyze_dataframe
+from src.model import SentimentPredictor
+from src.pareto import calculate_pareto, extract_negative_topics
+from src.preprocessing import CSVValidationError, read_csv_upload
+from src.reporting import (
+    estimate_payload,
+    generate_deterministic_report,
+    prepare_ai_context,
 )
 
 
-@st.cache_resource(show_spinner="Cargando modelo…")
-def load_artifacts() -> tuple[Any, Any]:
-    """Carga una única vez los artefactos versionados junto a la aplicación."""
-    missing = [path.name for path in (MODEL_PATH, VECTORIZER_PATH) if not path.is_file()]
-    if missing:
-        raise FileNotFoundError(f"Faltan artefactos locales: {', '.join(missing)}")
+MAX_TEXT_LENGTH = 5_000
+SENTIMENT_COLORS = {"Negativo": "#D92D20", "Neutro": "#475467", "Positivo": "#078A61"}
 
-    model = joblib.load(MODEL_PATH)
-    vectorizer = joblib.load(VECTORIZER_PATH)
-
-    if not hasattr(model, "classes_") or not hasattr(model, "predict_proba"):
-        raise TypeError("El clasificador no expone clases y probabilidades.")
-    if not hasattr(vectorizer, "transform"):
-        raise TypeError("El vectorizador no permite transformar texto.")
-    return model, vectorizer
+st.set_page_config(
+    page_title="Sentiment AI v2 | Customer Feedback Analytics",
+    page_icon="◉",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 
-def predict_sentiment(text: str) -> tuple[str, float]:
-    """Vectoriza el texto y devuelve la clase predicha y su probabilidad."""
-    model, vectorizer = load_artifacts()
-    features = vectorizer.transform([text])
-    label = model.predict(features)[0]
-    probabilities = model.predict_proba(features)[0]
-    class_index = list(model.classes_).index(label)
-    return str(label), float(probabilities[class_index])
+@st.cache_resource(show_spinner="Cargando modelo local…")
+def get_predictor() -> SentimentPredictor:
+    return SentimentPredictor.load()
 
 
-def sentiment_tone(label: str) -> tuple[str, str]:
-    """Asigna una presentación sin alterar ni asumir las clases del modelo."""
-    tones = {
-        "positivo": ("#087F5B", "#E6FCF5"),
-        "negativo": ("#C92A2A", "#FFF5F5"),
-        "neutro": ("#364FC7", "#EDF2FF"),
-    }
-    return tones.get(label.casefold(), ("#343A40", "#F1F3F5"))
+def get_batch_results() -> pd.DataFrame | None:
+    value = st.session_state.get("batch_results")
+    return value if isinstance(value, pd.DataFrame) and not value.empty else None
+
+
+def get_analysis() -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame]:
+    results = get_batch_results()
+    if results is None:
+        raise ValueError("Primero procesá un CSV en Análisis masivo.")
+    metrics = calculate_metrics(results)
+    negative_texts = results.loc[results["sentiment"] == "Negativo", "text"].tolist()
+    topics = extract_negative_topics(negative_texts)
+    return results, metrics, calculate_pareto(topics)
+
+
+def sentiment_probability_frame(probabilities: dict[str, float]) -> pd.DataFrame:
+    return pd.DataFrame(
+        {"sentiment": list(probabilities), "probability": list(probabilities.values())}
+    )
+
+
+def render_metric_cards(metrics: dict[str, object]) -> None:
+    counts = metrics["counts"]
+    cols = st.columns(5)
+    cols[0].metric("Comentarios", f"{metrics['total']:,}")
+    cols[1].metric("Positivos", f"{counts['Positivo']:,}", f"{metrics['percentages']['Positivo']:.1f}%")
+    cols[2].metric("Neutros", f"{counts['Neutro']:,}", f"{metrics['percentages']['Neutro']:.1f}%")
+    cols[3].metric("Negativos", f"{counts['Negativo']:,}", f"{metrics['percentages']['Negativo']:.1f}%", delta_color="inverse")
+    cols[4].metric("Confianza media", f"{metrics['mean_confidence']:.1%}")
+
+
+def render_individual() -> None:
+    st.header("Análisis individual")
+    st.write("Clasificá una opinión con el modelo local y revisá la probabilidad de cada clase aprendida.")
+    with st.form("individual_form"):
+        text = st.text_area(
+            "Comentario",
+            max_chars=MAX_TEXT_LENGTH,
+            height=180,
+            placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
+        )
+        submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
+    if submitted:
+        if len(text.strip()) < 2:
+            st.warning("Ingresá un texto de al menos 2 caracteres.")
+            return
+        try:
+            prediction = get_predictor().predict_one(text)
+        except Exception:
+            st.error("No fue posible analizar el texto con los artefactos locales.")
+            return
+        left, right = st.columns([1, 2])
+        with left:
+            st.metric("Sentimiento", prediction.label)
+            st.metric("Confianza", f"{prediction.confidence:.1%}")
+        with right:
+            chart_data = sentiment_probability_frame(prediction.probabilities)
+            figure = px.bar(
+                chart_data,
+                x="probability",
+                y="sentiment",
+                orientation="h",
+                color="sentiment",
+                color_discrete_map=SENTIMENT_COLORS,
+                text=chart_data["probability"].map(lambda value: f"{value:.1%}"),
+                labels={"probability": "Probabilidad", "sentiment": ""},
+            )
+            figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
+            figure.update_xaxes(tickformat=".0%", range=[0, 1])
+            st.plotly_chart(figure, width="stretch")
+        st.caption("La confianza es una estimación interna del modelo, no una garantía de corrección.")
+
+
+def render_batch() -> None:
+    st.header("Análisis masivo")
+    st.write("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
+    uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
+    if uploaded is None:
+        st.info("El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras.")
+        return
+    try:
+        frame = read_csv_upload(uploaded.getvalue())
+    except CSVValidationError as exc:
+        st.error(str(exc))
+        return
+    st.success(f"CSV válido: {len(frame):,} registros y {len(frame.columns)} columnas detectadas.")
+    st.dataframe(frame.head(20), width="stretch", hide_index=True)
+    column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
+    if st.button("Procesar comentarios", type="primary", width="stretch"):
+        try:
+            with st.spinner("Vectorizando y clasificando el lote…"):
+                results, dropped = analyze_dataframe(frame, column, get_predictor())
+            st.session_state["batch_results"] = results
+            st.session_state.pop("ai_report", None)
+            st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
+        except (CSVValidationError, ValueError) as exc:
+            st.error(str(exc))
+        except Exception:
+            st.error("No fue posible completar el análisis masivo.")
+    results = get_batch_results()
+    if results is not None:
+        st.subheader("Resultados procesados")
+        display = results.copy()
+        percentage_columns = [column for column in display if column.startswith("probability_")]
+        display["confidence"] = display["confidence"].map(lambda value: f"{value:.1%}")
+        for probability_column in percentage_columns:
+            display[probability_column] = display[probability_column].map(lambda value: f"{value:.1%}")
+        st.dataframe(display.head(100), width="stretch", hide_index=True)
+        csv_data = results.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            "Descargar CSV procesado",
+            data=csv_data,
+            file_name="sentiment_analysis_results.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+
+
+def render_dashboard() -> None:
+    st.header("Dashboard")
+    try:
+        results, metrics, _ = get_analysis()
+    except ValueError as exc:
+        st.info(str(exc))
+        return
+    render_metric_cards(metrics)
+    distribution = sentiment_distribution(metrics)
+    left, right = st.columns(2)
+    with left:
+        figure = px.bar(
+            distribution,
+            x="sentiment",
+            y="count",
+            color="sentiment",
+            color_discrete_map=SENTIMENT_COLORS,
+            text="count",
+            labels={"sentiment": "Sentimiento", "count": "Comentarios"},
+            title="Distribución de sentimientos",
+        )
+        figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
+        st.plotly_chart(figure, width="stretch")
+    with right:
+        confidence = results.groupby("sentiment", as_index=False)["confidence"].mean()
+        figure = px.bar(
+            confidence,
+            x="sentiment",
+            y="confidence",
+            color="sentiment",
+            color_discrete_map=SENTIMENT_COLORS,
+            text=confidence["confidence"].map(lambda value: f"{value:.1%}"),
+            labels={"sentiment": "Sentimiento", "confidence": "Confianza media"},
+            title="Confianza media por clase",
+        )
+        figure.update_yaxes(tickformat=".0%", range=[0, 1])
+        figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
+        st.plotly_chart(figure, width="stretch")
+
+    st.subheader("Visión de negocio")
+    negative_pct = metrics["percentages"]["Negativo"]
+    positive_pct = metrics["percentages"]["Positivo"]
+    ratio = metrics["positive_negative_ratio"]
+    business_cols = st.columns(3)
+    business_cols[0].metric("Feedback negativo", f"{negative_pct:.1f}%")
+    business_cols[1].metric("Señal positiva", f"{positive_pct:.1f}%")
+    business_cols[2].metric(
+        "Ratio positivo/negativo",
+        "Sin negativos" if ratio == float("inf") else f"{ratio:.2f}",
+    )
+    st.write(
+        f"Se detectaron **{metrics['critical_negative_count']:,} comentarios negativos críticos**, definidos de forma transparente como negativos cuya confianza está en el cuartil superior del lote (≥ {metrics['critical_confidence_threshold']:.1%})."
+    )
+
+
+def render_pareto() -> None:
+    st.header("Pareto de feedback negativo")
+    st.write("Los temas son n-gramas presentes en comentarios negativos. Se cuentan una vez por comentario para evitar que la repetición dentro de un texto infle la frecuencia.")
+    try:
+        _, _, pareto = get_analysis()
+    except ValueError as exc:
+        st.info(str(exc))
+        return
+    if pareto.empty:
+        st.info("No hay suficientes comentarios negativos para extraer temas.")
+        return
+    display = pareto.copy()
+    display["percentage"] = display["percentage"].map(lambda value: f"{value:.1f}%")
+    display["cumulative_percentage"] = display["cumulative_percentage"].map(lambda value: f"{value:.1f}%")
+    display["within_80_percent"] = display["within_80_percent"].map({True: "Sí", False: "No"})
+    display.columns = ["Tema", "Frecuencia", "Porcentaje", "Acumulado", "Dentro del 80%"]
+    st.dataframe(display, width="stretch", hide_index=True)
+
+    figure = make_subplots(specs=[[{"secondary_y": True}]])
+    figure.add_trace(go.Bar(x=pareto["topic"], y=pareto["frequency"], name="Frecuencia", marker_color="#3448C5"), secondary_y=False)
+    figure.add_trace(go.Scatter(x=pareto["topic"], y=pareto["cumulative_percentage"], name="% acumulado", mode="lines+markers", line=dict(color="#D92D20", width=3)), secondary_y=True)
+    figure.add_hline(y=80, line_dash="dash", line_color="#667085", annotation_text="80%", secondary_y=True)
+    figure.update_yaxes(title_text="Frecuencia", secondary_y=False)
+    figure.update_yaxes(title_text="Porcentaje acumulado", range=[0, 105], ticksuffix="%", secondary_y=True)
+    figure.update_layout(height=520, margin=dict(l=0, r=0, t=30, b=0), xaxis_tickangle=-35)
+    st.plotly_chart(figure, width="stretch")
+
+
+def _streamlit_cerebras_key() -> str | None:
+    try:
+        return st.secrets.get("CEREBRAS_API_KEY") or os.getenv("CEREBRAS_API_KEY")
+    except Exception:
+        return os.getenv("CEREBRAS_API_KEY")
+
+
+def render_report() -> None:
+    st.header("Informe ejecutivo")
+    try:
+        results, metrics, pareto = get_analysis()
+    except ValueError as exc:
+        st.info(str(exc))
+        return
+    deterministic = generate_deterministic_report(metrics, pareto)
+    st.subheader("Informe generado sin IA")
+    st.markdown(deterministic)
+    st.download_button(
+        "Descargar informe determinístico",
+        data=deterministic.encode("utf-8"),
+        file_name="executive_sentiment_report.md",
+        mime="text/markdown",
+        width="stretch",
+    )
+
+    st.divider()
+    st.subheader("Informe IA opcional con Cerebras")
+    st.write(f"Modelo: `{DEFAULT_CEREBRAS_MODEL}`. La llamada ocurre sólo al pulsar el botón y nunca recibe el CSV completo.")
+    include_examples = st.checkbox(
+        "Incluir hasta 3 ejemplos negativos anonimizados",
+        value=False,
+        help="Desactivado por defecto. Se eliminan emails, teléfonos, URLs e identificadores numéricos largos.",
+    )
+    examples = None
+    if include_examples:
+        examples = results.loc[results["sentiment"] == "Negativo", "text"].head(3).tolist()
+    context = prepare_ai_context(metrics, pareto, examples=examples)
+    size = estimate_payload(context)
+    st.caption(f"Payload estimado: {size['characters']:,} caracteres (~{size['approximate_tokens']:,} tokens), más el prompt versionado.")
+    key = _streamlit_cerebras_key()
+    if not key:
+        st.info("CEREBRAS_API_KEY no está configurada. El informe determinístico permanece disponible.")
+    if st.button("Generar informe con IA", disabled=not bool(key), type="primary", width="stretch"):
+        with st.spinner("Generando informe agregado con Cerebras…"):
+            report, used_ai, error = generate_report_with_fallback(
+                deterministic,
+                context,
+                api_key=key,
+            )
+        st.session_state["ai_report"] = report
+        st.session_state["ai_report_used_ai"] = used_ai
+        if error:
+            st.warning("Cerebras no respondió correctamente. Se muestra el informe ejecutivo generado sin IA.")
+    if "ai_report" in st.session_state:
+        label = "Informe generado con IA" if st.session_state.get("ai_report_used_ai") else "Informe ejecutivo generado sin IA"
+        st.subheader(label)
+        st.markdown(st.session_state["ai_report"])
+        st.download_button(
+            "Descargar informe mostrado",
+            data=st.session_state["ai_report"].encode("utf-8"),
+            file_name="ai_business_insights.md",
+            mime="text/markdown",
+            width="stretch",
+        )
+
+
+def render_about() -> None:
+    st.header("Acerca del proyecto")
+    st.markdown(
+        """
+        **Sentiment AI v2** combina NLP clásico reproducible con analítica de feedback y un informe generativo opcional.
+
+        - **Proyecto original:** desarrollo grupal H12-25-L-Equipo-72 de No Country.
+        - **Recuperación V6:** TF-IDF, regresión logística ternaria y artefactos originales empaquetados localmente.
+        - **Evolución v2:** nueva implementación modular de batch CSV, dashboard, Pareto e informes para portfolio.
+
+        Esta v2 se inspira funcionalmente en la aplicación histórica posterior, cuyo código no está disponible; no afirma reconstruir ese código. La atribución completa y las contribuciones verificables están en `ATTRIBUTION.md`.
+        """
+    )
+    st.subheader("Privacidad")
+    st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe agregados calculados y, con consentimiento explícito, hasta tres ejemplos anonimizados. Nunca se envían otras columnas del CSV.")
 
 
 st.markdown(
     """
     <style>
     :root { --ink:#182230; --muted:#667085; --line:#E4E7EC; --accent:#3448C5; }
-    .stApp {
-        background:
-          radial-gradient(circle at 8% 0%, rgba(52,72,197,.10), transparent 29rem),
-          #F8FAFC;
-    }
-    .block-container { max-width: 780px; padding: 3.5rem 1.2rem 3rem; }
-    .hero { margin-bottom: 1.7rem; }
-    .eyebrow {
-        color: var(--accent); font-size: .78rem; font-weight: 700;
-        letter-spacing: .09em; text-transform: uppercase; margin-bottom: .65rem;
-    }
-    .hero h1 { color:var(--ink); font-size:clamp(2.4rem, 7vw, 4rem); line-height:1; letter-spacing:-.045em; margin:0; }
-    .hero p { color:var(--muted); max-width:650px; font-size:1.05rem; line-height:1.65; margin:.9rem 0 0; }
-    [data-testid="stTextArea"] textarea {
-        min-height:190px; border-radius:14px; border:1px solid var(--line);
-        background:#FFF; padding:1rem; line-height:1.55;
-    }
-    .stButton > button {
-        width:100%; min-height:3rem; border:0; border-radius:10px;
-        background:var(--accent); color:#FFF; font-weight:700;
-    }
-    .stButton > button:hover { background:#293BA8; color:#FFF; }
-    .result-card {
-        margin-top:1.2rem; padding:1.25rem 1.4rem; border-radius:14px;
-        border:1px solid var(--result-color); background:var(--result-bg);
-        display:grid; grid-template-columns:1fr auto; gap:1rem; align-items:center;
-    }
-    .result-label { color:var(--muted); font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-    .result-value { color:var(--result-color); font-size:clamp(1.65rem, 5vw, 2.2rem); font-weight:800; margin-top:.15rem; }
-    .confidence { color:var(--ink); font-size:1.35rem; font-weight:800; text-align:right; }
-    .details {
-        margin-top:2.2rem; padding-top:1.35rem; border-top:1px solid var(--line);
-        display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;
-    }
-    .details h2 { color:var(--ink); font-size:.95rem; margin:0 0 .35rem; }
-    .details p { color:var(--muted); font-size:.86rem; line-height:1.55; margin:0; }
-    .legal { color:var(--muted); font-size:.76rem; line-height:1.5; margin-top:1.5rem; }
-    @media (max-width: 560px) {
-        .block-container { padding-top:2rem; }
-        .details { grid-template-columns:1fr; gap:1rem; }
-        .result-card { grid-template-columns:1fr; }
-        .confidence { text-align:left; }
-    }
+    .stApp { background:radial-gradient(circle at 8% 0%,rgba(52,72,197,.08),transparent 30rem),#F8FAFC; }
+    .block-container { max-width:1180px; padding-top:2.2rem; padding-bottom:3rem; }
+    h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
+    [data-testid="stMetric"] { background:#FFF; border:1px solid var(--line); padding:1rem; border-radius:12px; }
+    [data-testid="stSidebar"] { border-right:1px solid var(--line); }
+    .product-label { color:var(--accent); font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.72rem; }
+    .product-copy { color:var(--muted); line-height:1.55; font-size:.9rem; }
+    .stButton > button[kind="primary"] { background:var(--accent); border-color:var(--accent); }
     #MainMenu, footer { visibility:hidden; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.markdown(
-    """
-    <section class="hero">
-      <div class="eyebrow">NLP · Machine Learning clásico</div>
-      <h1>Sentiment AI</h1>
-      <p>Demo de clasificación de opiniones mediante representación TF-IDF y
-      regresión logística. El procesamiento ocurre localmente dentro de esta app.</p>
-    </section>
-    """,
-    unsafe_allow_html=True,
-)
-
-with st.form("sentiment_form", clear_on_submit=False):
-    user_text = st.text_area(
-        "Texto para analizar",
-        placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
-        max_chars=MAX_TEXT_LENGTH,
-        help=f"Ingresá entre 2 y {MAX_TEXT_LENGTH:,} caracteres.",
+with st.sidebar:
+    st.markdown('<div class="product-label">Customer Feedback Analytics</div>', unsafe_allow_html=True)
+    st.title("Sentiment AI v2")
+    st.markdown('<p class="product-copy">TF-IDF + regresión logística + analítica de negocio + informe IA opcional.</p>', unsafe_allow_html=True)
+    page = st.radio(
+        "Navegación",
+        ["Análisis individual", "Análisis masivo", "Dashboard", "Pareto 80/20", "Informe", "Acerca del proyecto"],
+        label_visibility="collapsed",
     )
-    submitted = st.form_submit_button("Analizar sentimiento", type="primary")
+    if get_batch_results() is not None:
+        st.success(f"Lote activo: {len(get_batch_results()):,} comentarios")
 
-if submitted:
-    clean_text = user_text.strip()
-    if len(clean_text) < 2:
-        st.warning("Ingresá un texto de al menos 2 caracteres.")
-    else:
-        try:
-            predicted_label, confidence = predict_sentiment(clean_text)
-            color, background = sentiment_tone(predicted_label)
-            st.markdown(
-                f"""
-                <section class="result-card" style="--result-color:{color};--result-bg:{background}">
-                  <div>
-                    <div class="result-label">Sentimiento detectado</div>
-                    <div class="result-value">{escape(predicted_label)}</div>
-                  </div>
-                  <div>
-                    <div class="result-label">Probabilidad estimada</div>
-                    <div class="confidence">{confidence:.1%}</div>
-                  </div>
-                </section>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.caption("La probabilidad expresa la confianza interna del clasificador; no garantiza que la predicción sea correcta.")
-        except (FileNotFoundError, TypeError, ValueError):
-            st.error("La aplicación no pudo cargar artefactos de modelo válidos. Revisá la instalación del proyecto.")
-        except Exception:
-            st.error("No fue posible analizar el texto. Intentá nuevamente.")
-
-st.markdown(
-    """
-    <section class="details">
-      <div><h2>Cómo funciona</h2><p>El texto se convierte en un vector de unigramas y bigramas TF-IDF; una regresión logística asigna una de las clases aprendidas.</p></div>
-      <div><h2>Tecnología</h2><p>Python · Streamlit · scikit-learn · joblib. Sin API separada, claves, descargas ni servicios externos en ejecución.</p></div>
-    </section>
-    <p class="legal">Versión recuperada, modificada y simplificada del proyecto grupal
-    H12-25-L-Equipo-72. Distribuida bajo GPL-3.0; la autoría original del equipo se conserva en ATTRIBUTION.md.</p>
-    """,
-    unsafe_allow_html=True,
-)
+pages = {
+    "Análisis individual": render_individual,
+    "Análisis masivo": render_batch,
+    "Dashboard": render_dashboard,
+    "Pareto 80/20": render_pareto,
+    "Informe": render_report,
+    "Acerca del proyecto": render_about,
+}
+pages[page]()
