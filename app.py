@@ -112,7 +112,7 @@ def render_individual() -> None:
             )
             figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
             figure.update_xaxes(tickformat=".0%", range=[0, 1])
-            st.plotly_chart(figure, width="stretch")
+            st.plotly_chart(figure, use_container_width=True)
         st.caption("La confianza es una estimación interna del modelo, no una garantía de corrección.")
 
 
@@ -183,7 +183,7 @@ def render_dashboard() -> None:
             title="Distribución de sentimientos",
         )
         figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
-        st.plotly_chart(figure, width="stretch")
+        st.plotly_chart(figure, use_container_width=True)
     with right:
         confidence = results.groupby("sentiment", as_index=False)["confidence"].mean()
         figure = px.bar(
@@ -198,7 +198,7 @@ def render_dashboard() -> None:
         )
         figure.update_yaxes(tickformat=".0%", range=[0, 1])
         figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
-        st.plotly_chart(figure, width="stretch")
+        st.plotly_chart(figure, use_container_width=True)
 
     st.subheader("Visión de negocio")
     negative_pct = metrics["percentages"]["Negativo"]
@@ -241,7 +241,7 @@ def render_pareto() -> None:
     figure.update_yaxes(title_text="Frecuencia", secondary_y=False)
     figure.update_yaxes(title_text="Porcentaje acumulado", range=[0, 105], ticksuffix="%", secondary_y=True)
     figure.update_layout(height=520, margin=dict(l=0, r=0, t=30, b=0), xaxis_tickangle=-35)
-    st.plotly_chart(figure, width="stretch")
+    st.plotly_chart(figure, use_container_width=True)
 
 
 def _streamlit_cerebras_key() -> str | None:
