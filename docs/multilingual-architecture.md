@@ -1,10 +1,10 @@
 # Arquitectura multilenguaje controlada (Fase 3.0A)
 
-Este documento es un diseño previo a la integración. La detección y la traducción no están activas, no existe todavía `ENABLE_MULTILINGUAL_SENTIMENT` en runtime y no se agregaron llamadas externas.
+La Fase 3.0B implementa el núcleo detrás de `ENABLE_MULTILINGUAL_SENTIMENT`, que permanece `false` por defecto. La capa todavía no está conectada a la UX/batch de preview y no se hicieron llamadas externas reales.
 
 ## Alcance y decisión del detector
 
-El alcance inicial queda limitado a `es`, `en`, `pt` e `it`. La recomendación para el prototipo 3.0B es `langdetect==1.0.9`, configurado una sola vez con `DetectorFactory.seed = 0`. Es pequeño (wheel cercano a 1 MB), offline, Apache 2.0 y cubre los cuatro idiomas. La elección es condicional: su release es de 2021, el propio proyecto advierte resultados inestables en texto corto o ambiguo sin semilla, y sus scores no se tratarán como probabilidades calibradas.
+El alcance inicial queda limitado a `es`, `en`, `pt` e `it`. Se incorporó `langdetect==1.0.9`, configurado una sola vez con `DetectorFactory.seed = 0`. Es pequeño (wheel cercano a 1 MB), offline, Apache 2.0 y cubre los cuatro idiomas. Su release es de 2021, el propio proyecto advierte resultados inestables en texto corto o ambiguo sin semilla, y sus scores no se exponen como probabilidades calibradas.
 
 | Opción | Fortalezas | Riesgos | Decisión |
 |---|---|---|---|
@@ -12,7 +12,7 @@ El alcance inicial queda limitado a `es`, `en`, `pt` e `it`. La recomendación p
 | `langid` | Determinista, 97 idiomas, permite restringir clases, BSD | Última release PyPI de 2016; score no comparable; mantenimiento bajo | Reserva si `langdetect` falla el gate |
 | `lingua-language-detector` | Diseñado para texto corto, activo, offline, Apache 2.0 | Wheel CPython 3.12 actual de ~170 MB; impacto de arranque/deploy | No adoptar en este deploy sin medir una variante reducida |
 
-No se agregó ninguna dependencia en 3.0A. Antes de fijar `langdetect`, 3.0B debe medir accuracy, repetibilidad, tiempo de import y memoria sobre el fixture versionado. Gate propuesto: 100% de repetibilidad y reporte explícito de accuracy/unknown; si la precisión no es defendible, se conserva la interfaz y no se habilita el feature flag.
+Gate 1 medido sobre 48 casos: 95,83% global; EN/PT/IT 100%; ES 83,33%; 0 unknown, 0 unsupported y tres ejecuciones idénticas. Los errores fueron `No resolvieron mi reclamo.` (IT) y `Pésimo soporte; no vuelvo.` (PT). El import aislado tuvo mediana aproximada de 28,9 ms en cinco procesos. Supera el mínimo acordado, aunque el margen de español exige seguimiento en 3.0C.
 
 ## Contratos
 
@@ -29,7 +29,7 @@ No se agregó ninguna dependencia en 3.0A. Antes de fijar `langdetect`, 3.0B deb
 - proveedor, modelo, éxito, latencia, error y usage opcional;
 - un resultado exitoso exige traducción no vacía; un fallo nunca incluye traducción.
 
-El adaptador futuro `CerebrasTranslationProvider` será independiente de `CerebrasSentimentReviewProvider`. Usará un prompt y schema propios y rechazará JSON libre, campos inesperados, idioma fuente incoherente y resultado vacío. No habrá rescate con regex.
+`CerebrasTranslationProvider` es independiente de `CerebrasSentimentReviewProvider`. Usa prompt y schema propios y rechaza JSON libre, campos inesperados, idioma fuente incoherente y resultado vacío. No hay rescate con regex. En 3.0B fue validado sólo con clientes simulados.
 
 ## Pipeline propuesto
 
@@ -59,9 +59,9 @@ Un fallo de detección, falta de API key, 429, timeout, JSON inválido o fallo d
 
 ## Coordinación de rate limit y presupuesto
 
-El `RatePacer` existente debe ser inyectado como una instancia única en el orquestador batch. Traducciones y second checks llaman al mismo coordinador antes de cada request; el límite Free Tier es 5 requests por 60 segundos en total, no por provider. No habrá concurrencia ni retries manuales duplicados.
+El `RatePacer` existente se inyecta en un único `ExternalRequestCoordinator`. Traducciones y second checks llaman al mismo coordinador antes de cada request; el límite Free Tier es 5 requests por 60 segundos en total, no por provider. La prueba combinada verifica que 3 traducciones y 2 reviews pasan y la sexta solicitud espera, usando reloj falso.
 
-Se propone `HYBRID_MAX_EXTERNAL_CALLS_PER_BATCH=25` como presupuesto global futuro. Cada traducción y cada second check exitosamente iniciado consume una unidad reservada de forma atómica. Migración compatible:
+Se agregó `HYBRID_MAX_EXTERNAL_CALLS_PER_BATCH=25` como presupuesto global. Cada traducción y cada second check iniciado consume una unidad antes de llamar al provider. Migración compatible:
 
 1. si existe la nueva variable, manda el límite global;
 2. si no existe y multilenguaje está ON, `HYBRID_MAX_REVIEWS_PER_BATCH` actúa como alias del límite global;
@@ -97,4 +97,4 @@ Una llamada combinada futura podría devolver traducción y sentimiento para tex
 - Sobreajuste al fixture pequeño; no representa calidad productiva.
 - `langdetect` tiene mantenimiento limitado; la dependencia debe quedar detrás de interfaz.
 
-3.0B implementará detector, feature flag OFF, provider estructurado, pipeline y coordinador/presupuesto con mocks. 3.0C añadirá UX y batch, AppTest, evaluación offline y sólo después la prueba real de hasta 6 traducciones. El histórico se toma como intención arquitectónica (traducción Cerebras/Llama 3 y revisión por incertidumbre), no como código reproducido literalmente; el diseño moderno usa gpt-oss-120b, separación de providers, feature flags, privacidad y observabilidad.
+3.0B implementó detector, feature flag OFF, provider estructurado, pipeline y coordinador/presupuesto con mocks. 3.0C conectará UX y batch, agregará AppTest de presentación y, sólo después, la prueba real de hasta 6 traducciones. El histórico se toma como intención arquitectónica (traducción Cerebras/Llama 3 y revisión por incertidumbre), no como código reproducido literalmente; el diseño moderno usa gpt-oss-120b, separación de providers, feature flags, privacidad y observabilidad.
