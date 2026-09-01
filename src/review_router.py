@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from src.model import PredictionObservability
 
@@ -28,6 +28,7 @@ SUPPORTED_REASONS = frozenset(
 class ReviewRouterConfig:
     confidence_threshold: float | None = 0.80
     margin_threshold: float | None = None
+    class_thresholds: Mapping[str, float] | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -36,6 +37,17 @@ class ReviewRouterConfig:
         ):
             if value is not None and not 0 <= value <= 1:
                 raise ValueError(f"{name} must be between 0 and 1.")
+        if self.class_thresholds is not None:
+            expected = {"Negativo", "Neutro", "Positivo"}
+            if set(self.class_thresholds) != expected:
+                raise ValueError("class_thresholds must define Negativo, Neutro and Positivo.")
+            if any(not 0 <= value <= 1 for value in self.class_thresholds.values()):
+                raise ValueError("Class thresholds must be between 0 and 1.")
+
+    def threshold_for(self, local_class: str) -> float | None:
+        if self.class_thresholds is not None:
+            return self.class_thresholds.get(local_class)
+        return self.confidence_threshold
 
 
 @dataclass(frozen=True)
@@ -55,11 +67,13 @@ def route_prediction(
 ) -> ReviewDecision:
     """Route only on configured numeric rules and explicit upstream signals."""
     reasons: list[str] = []
-    if (
-        config.confidence_threshold is not None
-        and observation.local_confidence < config.confidence_threshold
-    ):
-        reasons.append(LOW_CONFIDENCE)
+    confidence_threshold = config.threshold_for(observation.local_prediction)
+    if confidence_threshold is not None and observation.local_confidence < confidence_threshold:
+        reasons.append(
+            f"{LOW_CONFIDENCE}:{observation.local_prediction}<{confidence_threshold:.2f}"
+            if config.class_thresholds is not None
+            else LOW_CONFIDENCE
+        )
     if (
         config.margin_threshold is not None
         and observation.prediction_margin < config.margin_threshold

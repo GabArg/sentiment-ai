@@ -98,10 +98,14 @@ class CerebrasSentimentReviewProvider:
         api_key: str | None = None,
         model: str = DEFAULT_CEREBRAS_MODEL,
         client_factory: Callable[..., Any] | None = None,
+        timeout: float = 30.0,
+        max_retries: int = 2,
     ) -> None:
         self.api_key = resolve_api_key(api_key)
         self.model = model
         self.client_factory = client_factory
+        self.timeout = timeout
+        self.max_retries = max_retries
 
     def review_sentiment(self, text: str) -> ReviewResult:
         if not self.api_key:
@@ -112,7 +116,11 @@ class CerebrasSentimentReviewProvider:
                 from cerebras.cloud.sdk import Cerebras
 
                 factory = Cerebras
-            client = factory(api_key=self.api_key, timeout=30.0)
+            client = factory(
+                api_key=self.api_key,
+                timeout=self.timeout,
+                max_retries=self.max_retries,
+            )
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": build_review_prompt(text)}],
@@ -158,4 +166,10 @@ class CerebrasSentimentReviewProvider:
             return _failure(self.model, "timeout")
         except Exception as exc:
             status_code = getattr(exc, "status_code", None)
-            return _failure(self.model, "rate_limited" if status_code == 429 else "provider_error")
+            if status_code == 429:
+                error_code = "rate_limited"
+            elif type(exc).__name__ == "APITimeoutError":
+                error_code = "timeout"
+            else:
+                error_code = "provider_error"
+            return _failure(self.model, error_code)
