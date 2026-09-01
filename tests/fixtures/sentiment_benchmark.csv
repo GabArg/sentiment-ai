@@ -1,0 +1,61 @@
+text,expected_sentiment,category
+"Excelente atención, volvería a comprar.",Positivo,positive_opinion
+El producto superó mis expectativas.,Positivo,positive_opinion
+La entrega fue rápida y sin inconvenientes.,Positivo,positive_opinion
+Estoy muy satisfecho con el servicio.,Positivo,positive_opinion
+Me resolvieron el problema de inmediato.,Positivo,positive_opinion
+La calidad es fantástica.,Positivo,positive_opinion
+Todo llegó en perfecto estado.,Positivo,positive_opinion
+El soporte fue amable y eficiente.,Positivo,positive_opinion
+Recomiendo esta tienda sin dudas.,Positivo,positive_opinion
+La experiencia de compra fue muy buena.,Positivo,positive_opinion
+Funciona mejor de lo que esperaba.,Positivo,positive_opinion
+El precio es justo para la calidad.,Positivo,positive_opinion
+Me encantó el producto.,Positivo,positive_opinion
+Cumplieron con todo lo prometido.,Positivo,positive_opinion
+La respuesta del equipo fue excelente.,Positivo,positive_opinion
+Volvería a elegir esta marca.,Positivo,positive_opinion
+El envío llegó antes de tiempo.,Positivo,positive_opinion
+La atención fue clara y cordial.,Positivo,positive_opinion
+Estoy feliz con mi compra.,Positivo,positive_opinion
+"Cinco estrellas, totalmente recomendable.",Positivo,positive_opinion
+El producto llegó roto y nadie respondió mi reclamo.,Negativo,negative_opinion
+La atención fue pésima.,Negativo,negative_opinion
+Estoy muy decepcionado con la compra.,Negativo,negative_opinion
+El pedido nunca llegó.,Negativo,negative_opinion
+Me cobraron dos veces y no lo solucionaron.,Negativo,negative_opinion
+La calidad es terrible.,Negativo,negative_opinion
+No funciona como prometieron.,Negativo,negative_opinion
+El soporte ignoró todos mis mensajes.,Negativo,negative_opinion
+La entrega llegó con una semana de demora.,Negativo,negative_opinion
+No recomiendo esta tienda.,Negativo,negative_opinion
+El artículo vino incompleto.,Negativo,negative_opinion
+Fue una pérdida de dinero.,Negativo,negative_opinion
+La aplicación se cierra constantemente.,Negativo,negative_opinion
+El vendedor canceló sin explicación.,Negativo,negative_opinion
+Recibí un producto usado.,Negativo,negative_opinion
+La respuesta del equipo fue grosera.,Negativo,negative_opinion
+El empaque estaba destruido.,Negativo,negative_opinion
+El servicio es lento e ineficiente.,Negativo,negative_opinion
+Quiero devolverlo porque falla.,Negativo,negative_opinion
+Una experiencia frustrante de principio a fin.,Negativo,negative_opinion
+El pedido llegó el martes por la tarde.,Neutro,factual_neutral
+La compra fue realizada el lunes.,Neutro,factual_neutral
+El paquete contiene tres unidades.,Neutro,factual_neutral
+La factura fue enviada por correo electrónico.,Neutro,factual_neutral
+El producto es de color azul.,Neutro,factual_neutral
+La tienda abre a las nueve.,Neutro,factual_neutral
+El envío figura en estado de preparación.,Neutro,factual_neutral
+La caja mide treinta centímetros.,Neutro,factual_neutral
+El pago se procesó con tarjeta.,Neutro,factual_neutral
+El modelo corresponde a la versión 2025.,Neutro,factual_neutral
+La entrega está programada para mañana.,Neutro,factual_neutral
+El artículo incluye un manual impreso.,Neutro,factual_neutral
+El pedido tiene el número de seguimiento asignado.,Neutro,factual_neutral
+La compra se registró en la cuenta.,Neutro,factual_neutral
+El paquete fue recibido por la recepción.,Neutro,factual_neutral
+El producto pesa dos kilogramos.,Neutro,factual_neutral
+La garantía tiene una duración de doce meses.,Neutro,factual_neutral
+El sistema muestra la fecha de compra.,Neutro,factual_neutral
+La sucursal está ubicada en el centro.,Neutro,factual_neutral
+El comprobante indica dos artículos.,Neutro,factual_neutral

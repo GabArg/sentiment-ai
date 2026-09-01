@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -11,6 +14,13 @@ from src.preprocessing import (
     prepare_text_column,
     read_csv_upload,
 )
+
+
+def historical_training_clean_text(text: str) -> str:
+    """Exact normalization documented in the recovered train_model.py."""
+    cleaned = re.sub(r"[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.,!?]", "", text)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.lower().strip()
 
 
 def test_empty_csv_is_rejected():
@@ -98,4 +108,13 @@ def test_anonymization_handles_international_phone_and_preserves_name_text():
     assert "202" not in result
     assert "123456789" not in result
     assert result.count("[PHONE]") == 2
+
+
+def test_historical_training_cleanup_differs_from_current_raw_inference(predictor):
+    raw = "excelente-servicio"
+    historically_cleaned = historical_training_clean_text(raw)
+    assert historically_cleaned == "excelenteservicio"
+    raw_features = predictor.vectorizer.transform([raw])
+    cleaned_features = predictor.vectorizer.transform([historically_cleaned])
+    assert not np.array_equal(raw_features.toarray(), cleaned_features.toarray())
 

@@ -24,6 +24,17 @@ class SentimentPrediction:
     probabilities: dict[str, float]
 
 
+@dataclass(frozen=True)
+class PredictionObservability:
+    """Local decision details that do not change the published prediction."""
+
+    local_prediction: str
+    local_confidence: float
+    second_best_class: str
+    second_best_probability: float
+    prediction_margin: float
+
+
 class SentimentPredictor:
     """Thin, reusable wrapper around the original V6 artifacts."""
 
@@ -91,6 +102,19 @@ class SentimentPredictor:
         for index, class_name in enumerate(self.classes):
             result[f"probability_{class_name.casefold()}"] = probabilities[:, index]
         return result
+
+    def observe_one(self, text: str) -> PredictionObservability:
+        """Return top-1/top-2 diagnostics while preserving normal inference."""
+        prediction = self.predict_one(text)
+        ranked = sorted(prediction.probabilities.items(), key=lambda item: item[1], reverse=True)
+        (local_class, local_probability), (second_class, second_probability) = ranked[:2]
+        return PredictionObservability(
+            local_prediction=local_class,
+            local_confidence=local_probability,
+            second_best_class=second_class,
+            second_best_probability=second_probability,
+            prediction_margin=local_probability - second_probability,
+        )
 
     def _empty_result(self) -> pd.DataFrame:
         columns = ["text", "sentiment", "confidence"] + [

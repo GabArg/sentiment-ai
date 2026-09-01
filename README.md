@@ -38,7 +38,9 @@ Los artefactos originales se cargan una vez con `st.cache_resource`. `model.clas
 - serialización: joblib y scikit-learn 1.8.0;
 - datos históricos: `dataset_unificado.csv`, construido por el equipo a partir de tres CSV, incluido un conjunto sintético multilingüe V6.
 
-El repositorio no incluye métricas de evaluación reproducibles y esta v2 no reentrena el modelo. La confianza es una probabilidad estimada por el clasificador, no una garantía de acierto.
+La v2 no reentrena el modelo. Incluye un benchmark externo/manual reproducible de 60 frases para medir regresiones y casos fuera del dominio original. El holdout reconstruido del corpus alcanza aproximadamente 89,42 % de accuracy; sobre el benchmark manual el baseline actual es 51,67 % global y 20 % para Neutro. La segunda cifra describe únicamente ese benchmark pequeño y dirigido, no el rendimiento general del modelo.
+
+La confianza es la probabilidad interna asignada por el clasificador, no una garantía de acierto. Existen errores con confianza igual o superior a 80 %, por lo que ese valor no debe interpretarse como certeza ni como regla suficiente para una futura arquitectura híbrida. La metodología, observabilidad y discrepancia de preprocessing están documentadas en [docs/quality-evaluation.md](docs/quality-evaluation.md).
 
 ### Prueba multilingüe exploratoria
 
@@ -79,6 +81,8 @@ src/reporting.py               prompt e informe determinístico
 src/ai_provider.py             integración opcional y fallback
 models/                        artefactos joblib originales
 tests/                         pruebas unitarias y funcionales
+tests/fixtures/                benchmark manual de evaluación, nunca de entrenamiento
+docs/quality-evaluation.md     baseline, observabilidad y preprocessing
 .streamlit/secrets.toml.example
 ```
 
@@ -104,6 +108,7 @@ Pruebas:
 pip install -r requirements-dev.txt
 pytest --cov=src --cov-report=term-missing
 python -m compileall app.py src tests
+python -m src.evaluation
 ```
 
 ## Configuración opcional de Cerebras
