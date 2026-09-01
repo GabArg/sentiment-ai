@@ -24,12 +24,37 @@ def test_csv_columns_and_delimiter_are_detected():
     assert len(frame) == 2
 
 
+SINGLE_COLUMN_COMMENTS = [
+    "Excelente atención y entrega rápida.",
+    "El producto llegó roto.",
+    "El pedido llegó el martes por la tarde.",
+    "Muy buena calidad, estoy conforme.",
+    "No respondieron mi reclamo.",
+    "La compra fue realizada el lunes.",
+]
+
+
+@pytest.mark.parametrize("encoding", ["utf-8", "utf-8-sig"])
+def test_single_column_csv_preserves_header_and_rows(encoding):
+    raw = ("comentario\n" + "\n".join(SINGLE_COLUMN_COMMENTS) + "\n").encode(encoding)
+    frame = read_csv_upload(raw)
+
+    assert list(frame.columns) == ["comentario"]
+    assert frame["comentario"].tolist() == SINGLE_COLUMN_COMMENTS
+
+
 @pytest.mark.parametrize("delimiter", [",", ";", "\t"])
 def test_supported_delimiters_are_detected(delimiter):
     raw = f"id{delimiter}opinion\n1{delimiter}Muy bueno\n2{delimiter}Muy malo\n".encode()
     frame = read_csv_upload(raw)
     assert list(frame.columns) == ["id", "opinion"]
     assert len(frame) == 2
+
+
+def test_malformed_csv_is_rejected():
+    raw = b'column_a,column_b\n"unterminated,value\n'
+    with pytest.raises(CSVValidationError, match="encoding or delimiter"):
+        read_csv_upload(raw)
 
 
 def test_upload_size_limit_is_enforced_before_parsing():

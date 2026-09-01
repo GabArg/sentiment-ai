@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from io import BytesIO
+import csv
+from io import BytesIO, StringIO
 import re
 from typing import BinaryIO
 
@@ -21,6 +22,23 @@ class CSVValidationError(ValueError):
     """Raised when an uploaded CSV cannot be processed safely."""
 
 
+def _is_coherent_single_column(text: str) -> bool:
+    if "\x00" in text or any(ord(character) < 32 and character not in "\r\n\t" for character in text):
+        return False
+    lines = [line for line in text.splitlines() if line.strip()]
+    if len(lines) < 2:
+        return False
+    for delimiter in (",", ";", "\t"):
+        try:
+            header = next(csv.reader([lines[0]], delimiter=delimiter, strict=True))
+            list(csv.reader(StringIO(text), delimiter=delimiter, strict=True))
+        except csv.Error:
+            return False
+        if len(header) != 1:
+            return False
+    return True
+
+
 def read_csv_upload(source: bytes | BinaryIO, max_bytes: int = MAX_UPLOAD_BYTES) -> pd.DataFrame:
     raw = source if isinstance(source, bytes) else source.read()
     if not raw:
@@ -32,8 +50,20 @@ def read_csv_upload(source: bytes | BinaryIO, max_bytes: int = MAX_UPLOAD_BYTES)
         try:
             frame = pd.read_csv(BytesIO(raw), sep=None, engine="python", encoding=encoding)
             break
-        except (UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError):
+        except UnicodeDecodeError:
             continue
+        except (pd.errors.ParserError, pd.errors.EmptyDataError):
+            try:
+                decoded = raw.decode(encoding)
+            except UnicodeDecodeError:
+                continue
+            if not _is_coherent_single_column(decoded):
+                continue
+            try:
+                frame = pd.read_csv(StringIO(decoded), sep="\x1f", engine="python")
+                break
+            except (pd.errors.ParserError, pd.errors.EmptyDataError):
+                continue
     else:
         raise CSVValidationError("The CSV encoding or delimiter could not be detected.") from None
 
