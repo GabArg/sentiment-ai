@@ -1,149 +1,134 @@
-# Sentiment AI
+# Sentiment AI v2
 
-Aplicación web de análisis de sentimientos construida con Streamlit y Machine Learning clásico. Recibe una opinión escrita, la representa con TF-IDF y utiliza una regresión logística multiclase para devolver el sentimiento predicho y su probabilidad estimada.
+Aplicación de **Customer Feedback Analytics** que combina NLP clásico, análisis masivo y reporting ejecutivo. Clasifica comentarios con TF-IDF y regresión logística, resume métricas de negocio, extrae temas negativos, calcula un Pareto 80/20 y genera un informe reproducible. Como mejora opcional, Cerebras puede redactar una segunda versión ejecutiva a partir de datos agregados y minimizados.
 
-> Esta es una versión **recuperada, modificada, simplificada y preparada para portfolio** del proyecto grupal [H12-25-L-Equipo-72](https://github.com/S4mma3l/H12-25-L-Equipo-72/tree/feature/mejora-dataset-v6). No se presenta el trabajo original del equipo como una creación individual. La procedencia y las modificaciones están detalladas en [ATTRIBUTION.md](ATTRIBUTION.md).
+> Este repositorio conserva tres capas claramente diferenciadas: el proyecto grupal original de No Country, su recuperación técnica V6 para portfolio y esta evolución v2 posterior. El software original no se presenta como trabajo individual. Véase [ATTRIBUTION.md](ATTRIBUTION.md).
 
-## Demo online
+## Capacidades
 
-La URL pública se agregará aquí después de crear la aplicación en Streamlit Community Cloud.
+- análisis individual con etiqueta, confianza y distribución por clase;
+- carga CSV con detección de columnas, previsualización, nulos y límites de seguridad;
+- inferencia vectorizada de hasta 10.000 filas;
+- dashboard de distribución, confianza y visión de negocio;
+- extracción determinística de temas negativos mediante frecuencia documental de unigramas y bigramas;
+- Pareto 80/20 con tabla, barras y porcentaje acumulado;
+- informe ejecutivo determinístico, disponible siempre;
+- informe IA opcional con Cerebras, sólo por acción explícita;
+- exportación del CSV procesado y del informe en Markdown.
 
-## Problema
-
-Equipos que reciben muchas reseñas o comentarios necesitan una primera clasificación que les permita organizar feedback positivo, negativo y neutro. La revisión manual no escala bien y dificulta una lectura inicial consistente.
-
-## Solución
-
-Esta demo ofrece una interfaz responsive donde una persona puede ingresar texto libre y obtener:
-
-- la clase de sentimiento elegida por el modelo;
-- la probabilidad asignada a esa clase;
-- una respuesta visual clara, sin depender de otro servidor.
-
-La probabilidad es la confianza interna del clasificador, no una garantía de acierto. El modelo es una demostración de NLP clásico y no debe usarse como único criterio para decisiones sensibles.
+La aplicación no requiere FastAPI, localhost, datasets, descargas de modelos ni servicios externos para sus funciones principales.
 
 ## Arquitectura
 
 ```text
-Usuario
-  ↓
-Streamlit (app.py)
-  ↓
-TfidfVectorizer (unigramas + bigramas, hasta 5.000 features)
-  ↓
-Regresión logística multiclase
-  ↓
-Clase predicha + probabilidad estimada
+Usuario -> Streamlit -> texto / CSV -> validación
+        -> TF-IDF -> Logistic Regression -> clase + probabilidades
+        -> agregaciones -> dashboard -> temas -> Pareto
+        -> informe determinístico
+        -> Cerebras opcional (contexto agregado y anonimizado)
 ```
 
-La versión grupal exponía la inferencia mediante FastAPI y el frontend se conectaba a `localhost`. Esta versión carga los artefactos directamente en Streamlit y los conserva en caché durante la sesión del proceso. No requiere backend separado, secretos, descargas ni servicios externos en runtime.
+Los artefactos originales se cargan una vez con `st.cache_resource`. `model.classes_` define en runtime la asociación entre clases y probabilidades; no se presupone su orden.
 
 ## Modelo y NLP
 
-- **Representación:** `TfidfVectorizer` de scikit-learn.
-- **Features:** unigramas y bigramas, `min_df=3`, `max_df=0.9`, máximo de 5.000 términos.
-- **Clasificador:** `LogisticRegression` con `class_weight="balanced"`, `C=1.0`, solver `newton-cg` y `max_iter=1000`.
-- **Clases serializadas:** `Negativo`, `Neutro` y `Positivo`.
-- **Persistencia:** artefactos joblib incluidos en `models/`.
+- vectorizador: `TfidfVectorizer`, unigramas y bigramas, hasta 5.000 features;
+- clasificador: `LogisticRegression` multiclase, `class_weight="balanced"`, solver `newton-cg`;
+- clases serializadas: `Negativo`, `Neutro`, `Positivo`;
+- serialización: joblib y scikit-learn 1.8.0;
+- datos históricos: `dataset_unificado.csv`, construido por el equipo a partir de tres CSV, incluido un conjunto sintético multilingüe V6.
 
-No se publican métricas porque la rama de origen no conserva un reporte de evaluación reproducible junto a los artefactos. Esta versión no reentrena ni altera el modelo.
+El repositorio no incluye métricas de evaluación reproducibles y esta v2 no reentrena el modelo. La confianza es una probabilidad estimada por el clasificador, no una garantía de acierto.
 
-## Dataset y origen de datos
+### Prueba multilingüe exploratoria
 
-Según el código de la rama original, el entrenamiento utilizó `data/processed/dataset_unificado.csv`, producido mediante la unificación y normalización de tres CSV de `data/raw/`. Entre ellos hay un conjunto sintético multilingüe V6 generado por el equipo con reseñas en español, inglés y portugués, además de otros dos archivos identificados en esa rama como `DB_archivo_con_sentimiento.csv` y `DB_dataset_unificado.csv`.
+| Idioma | Positivo | Negativo | Neutro |
+|---|---|---|---|
+| Español | Positivo (98,4 %) | Negativo (77,3 %) | Neutro (59,0 %) |
+| Inglés | Positivo (66,5 %) | Negativo (74,6 %) | Neutro (47,8 %) |
+| Portugués | Positivo (89,8 %) | **Neutro (52,7 %)** | Neutro (64,0 %) |
 
-El repositorio de portfolio no incluye los datasets ni scripts de entrenamiento porque no son necesarios para ejecutar la demo. Para revisar el pipeline original y la procedencia disponible, consulte la [rama grupal de origen](https://github.com/S4mma3l/H12-25-L-Equipo-72/tree/feature/mejora-dataset-v6). No se atribuye una fuente externa más específica cuando el proyecto original no la documenta.
+Son nueve pruebas manuales, no una evaluación estadística. El fallo del ejemplo negativo en portugués indica que no debe afirmarse soporte multilingüe robusto sin un conjunto de evaluación etiquetado. No se añadió traducción automática.
 
-## Tecnologías
+## Batch, temas y Pareto
 
-- Python 3.12
-- Streamlit
-- scikit-learn 1.8.0
-- joblib
-- TF-IDF y regresión logística
+El CSV puede usar coma, punto y coma, tabulación o barra vertical. La persona elige la columna de texto; las filas nulas, vacías o demasiado cortas se excluyen. El límite es 10 MB y 10.000 registros para proteger los recursos de Streamlit Community Cloud.
 
-`scikit-learn==1.8.0` está fijado porque esa es la versión con la que se serializaron los dos artefactos. Así se evitan advertencias y riesgos de incompatibilidad al deserializarlos.
+Para los comentarios clasificados como negativos, `CountVectorizer` normaliza acentos, elimina stopwords en español, inglés y portugués y calcula frecuencia por documento. Se priorizan bigramas y se eliminan unigramas redundantes. Estos términos son **señales léxicas**, no categorías ni causas inferidas. El Pareto ordena menciones por frecuencia y marca el conjunto mínimo que alcanza el 80 % acumulado.
+
+La nube de palabras se omitió: agrega una dependencia y suele comunicar peor que la tabla y el Pareto cuantificado.
+
+## Informes y Cerebras
+
+El informe determinístico contiene distribución, principales problemas, Pareto, oportunidades y limitaciones calculadas. Funciona sin credenciales.
+
+La opción IA usa el SDK oficial `cerebras_cloud_sdk` y el modelo `gpt-oss-120b`. La [documentación oficial](https://inference-docs.cerebras.ai/models/openai-oss) lo recomienda para resumen; el [catálogo](https://inference-docs.cerebras.ai/models/overview) publica aproximadamente 3.000 tokens/s y precios de USD 0,35 por millón de tokens de entrada y USD 0,75 por millón de salida. Los precios y modelos pueden cambiar.
+
+La llamada ocurre únicamente al pulsar **Generar informe con IA**. Se envían conteos, porcentajes, confianza media, temas y Pareto; opcionalmente, hasta tres ejemplos negativos anonimizados. Nunca se envía el CSV completo ni columnas ajenas al texto. Emails, teléfonos, URLs e identificadores largos se reemplazan antes de enviar ejemplos. Si falta la clave, hay timeout, cuota, error o respuesta inválida, se conserva el informe determinístico.
 
 ## Estructura
 
 ```text
-sentiment-ai/
-├── .streamlit/
-│   └── config.toml
-├── models/
-│   ├── sentiment_model.joblib
-│   └── tfidf_vectorizer.joblib
-├── app.py
-├── requirements.txt
-├── runtime.txt
-├── README.md
-├── ATTRIBUTION.md
-├── LICENSE
-└── .gitignore
+app.py                         interfaz y navegación Streamlit
+src/model.py                   carga e inferencia local
+src/preprocessing.py           CSV, validación y anonimización
+src/batch.py                   análisis vectorizado
+src/analytics.py               métricas de negocio
+src/pareto.py                  temas y cálculo 80/20
+src/reporting.py               prompt e informe determinístico
+src/ai_provider.py             integración opcional y fallback
+models/                        artefactos joblib originales
+tests/                         pruebas unitarias y funcionales
+.streamlit/secrets.toml.example
 ```
 
-## Instalación local
+## Instalación y ejecución
 
-Requisitos: Python 3.12 y Git.
+Requiere Python 3.12.
 
 ```bash
 git clone https://github.com/GabArg/sentiment-ai.git
 cd sentiment-ai
+git switch feature/v2-dashboard-ai-report
 python -m venv .venv
-```
-
-En Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-En macOS o Linux:
+Pruebas:
 
 ```bash
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-streamlit run app.py
+pip install -r requirements-dev.txt
+pytest --cov=src --cov-report=term-missing
+python -m compileall app.py src tests
 ```
 
-Streamlit mostrará la URL local en la terminal. No hay que iniciar FastAPI ni configurar variables de entorno.
+## Configuración opcional de Cerebras
 
-## Ejemplo de uso
+Usá una variable de entorno `CEREBRAS_API_KEY` o copiá `.streamlit/secrets.toml.example` como `.streamlit/secrets.toml` y completala localmente. El archivo real está ignorado y nunca debe versionarse.
 
-1. Escribí una reseña, por ejemplo: `La atención fue excelente y el envío llegó a tiempo.`
-2. Seleccioná **Analizar sentimiento**.
-3. La aplicación mostrará exactamente la etiqueta producida por el modelo y su probabilidad estimada.
-
-## Despliegue en Streamlit Community Cloud
-
-Use esta configuración:
+En Streamlit Community Cloud:
 
 ```text
 Repository: GabArg/sentiment-ai
-Branch: main
-Main file path: app.py
+Branch: feature/v2-dashboard-ai-report
+Main file: app.py
+Advanced settings > Secrets: CEREBRAS_API_KEY = "..."  # opcional
 ```
 
-No hacen falta secrets ni comandos de inicio adicionales. `runtime.txt` recomienda Python 3.12 y `requirements.txt` instala la versión compatible de scikit-learn.
+Sin secret, toda la aplicación salvo la redacción IA continúa operativa.
 
-## Origen y cambios de esta versión
+## Evolución y atribución
 
-El proyecto fue desarrollado originalmente en equipo dentro de No Country. Esta recuperación:
+1. **Proyecto original:** desarrollo grupal H12-25-L-Equipo-72 dentro de No Country.
+2. **Recuperación V6:** adaptación del clasificador TF-IDF + Logistic Regression como demo independiente de portfolio.
+3. **Evolución v2:** nueva implementación modular de batch, dashboard, temas, Pareto, informes, privacidad, Cerebras opcional, exportación y tests en este repositorio.
 
-- elimina FastAPI y la conexión a `localhost` del camino de despliegue;
-- ejecuta TF-IDF e inferencia directamente en Streamlit;
-- incluye los artefactos originales en el repositorio, sin descargas en runtime;
-- carga modelo y vectorizador una sola vez mediante caché;
-- valida entradas y presenta errores sin tracebacks al usuario;
-- rehace la interfaz con un diseño sobrio y responsive;
-- reduce dependencias y documenta compatibilidad, procedencia y despliegue.
-
-Consulte [ATTRIBUTION.md](ATTRIBUTION.md) para la atribución completa.
+Los nombres del equipo y el alcance verificable de la participación de Guido están documentados sin inferir roles en [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ## Licencia
 
-Este trabajo derivado se distribuye bajo la [GNU General Public License v3.0](LICENSE), igual que el proyecto original. Los avisos de procedencia y autoría del equipo deben conservarse al redistribuir esta versión.
+Este trabajo derivado se distribuye bajo [GNU GPL v3.0](LICENSE), como el proyecto original. Deben conservarse la licencia, la procedencia y los avisos de modificación.
