@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Iterable
 
 import pandas as pd
-
-from src.preprocessing import anonymize_text
 
 
 REPORT_PROMPT = """Actuá como analista senior de Customer Experience y redactá un informe ejecutivo en español.
@@ -95,8 +92,6 @@ def generate_deterministic_report(
 def prepare_ai_context(
     metrics: dict[str, object],
     pareto: pd.DataFrame,
-    examples: Iterable[str] | None = None,
-    max_examples: int = 3,
 ) -> dict[str, object]:
     topics = [
         {
@@ -118,9 +113,6 @@ def prepare_ai_context(
         "negative_topic_pareto": topics,
         "methodology": "TF-IDF + logistic regression; negative topics are document-frequency n-grams.",
     }
-    if examples:
-        cleaned = [anonymize_text(item) for item in examples]
-        context["anonymized_negative_examples"] = [item for item in cleaned if item][:max_examples]
     return context
 
 

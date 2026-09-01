@@ -272,15 +272,7 @@ def render_report() -> None:
     st.divider()
     st.subheader("Informe IA opcional con Cerebras")
     st.write(f"Modelo: `{DEFAULT_CEREBRAS_MODEL}`. La llamada ocurre sólo al pulsar el botón y nunca recibe el CSV completo.")
-    include_examples = st.checkbox(
-        "Incluir hasta 3 ejemplos negativos anonimizados",
-        value=False,
-        help="Desactivado por defecto. Se eliminan emails, teléfonos, URLs e identificadores numéricos largos.",
-    )
-    examples = None
-    if include_examples:
-        examples = results.loc[results["sentiment"] == "Negativo", "text"].head(3).tolist()
-    context = prepare_ai_context(metrics, pareto, examples=examples)
+    context = prepare_ai_context(metrics, pareto)
     size = estimate_payload(context)
     st.caption(f"Payload estimado: {size['characters']:,} caracteres (~{size['approximate_tokens']:,} tokens), más el prompt versionado.")
     key = _streamlit_cerebras_key()
@@ -324,7 +316,7 @@ def render_about() -> None:
         """
     )
     st.subheader("Privacidad")
-    st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe agregados calculados y, con consentimiento explícito, hasta tres ejemplos anonimizados. Nunca se envían otras columnas del CSV.")
+    st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas agregadas y temas calculados. Nunca se envían comentarios, el CSV ni sus otras columnas.")
 
 
 st.markdown(

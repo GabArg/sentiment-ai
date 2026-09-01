@@ -14,6 +14,7 @@ import pandas as pd
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL_PATH = PROJECT_DIR / "models" / "sentiment_model.joblib"
 DEFAULT_VECTORIZER_PATH = PROJECT_DIR / "models" / "tfidf_vectorizer.joblib"
+MAX_TEXT_CHARS = 5_000
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,8 @@ class SentimentPredictor:
         clean_text = str(text).strip()
         if len(clean_text) < 2:
             raise ValueError("Text must contain at least two characters.")
+        if len(clean_text) > MAX_TEXT_CHARS:
+            raise ValueError(f"Text must not exceed {MAX_TEXT_CHARS:,} characters.")
         result = self.predict_batch([clean_text]).iloc[0]
         probabilities = {
             class_name: float(result[f"probability_{class_name.casefold()}"])
@@ -67,6 +70,8 @@ class SentimentPredictor:
             return self._empty_result()
         if any(len(text) < 2 for text in values):
             raise ValueError("Every text must contain at least two characters.")
+        if any(len(text) > MAX_TEXT_CHARS for text in values):
+            raise ValueError(f"Texts must not exceed {MAX_TEXT_CHARS:,} characters.")
 
         features = self.vectorizer.transform(values)
         labels = self.model.predict(features)
@@ -92,4 +97,3 @@ class SentimentPredictor:
             f"probability_{class_name.casefold()}" for class_name in self.classes
         ]
         return pd.DataFrame(columns=columns)
-

@@ -33,7 +33,7 @@ def generate_cerebras_report(
             from cerebras.cloud.sdk import Cerebras
 
             client_factory = Cerebras
-        client = client_factory(api_key=key)
+        client = client_factory(api_key=key, timeout=30.0)
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": build_ai_prompt(context)}],

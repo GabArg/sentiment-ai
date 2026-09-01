@@ -64,7 +64,7 @@ El informe determinístico contiene distribución, principales problemas, Pareto
 
 La opción IA usa el SDK oficial `cerebras_cloud_sdk` y el modelo `gpt-oss-120b`. La [documentación oficial](https://inference-docs.cerebras.ai/models/openai-oss) lo recomienda para resumen; el [catálogo](https://inference-docs.cerebras.ai/models/overview) publica aproximadamente 3.000 tokens/s y precios de USD 0,35 por millón de tokens de entrada y USD 0,75 por millón de salida. Los precios y modelos pueden cambiar.
 
-La llamada ocurre únicamente al pulsar **Generar informe con IA**. Se envían conteos, porcentajes, confianza media, temas y Pareto; opcionalmente, hasta tres ejemplos negativos anonimizados. Nunca se envía el CSV completo ni columnas ajenas al texto. Emails, teléfonos, URLs e identificadores largos se reemplazan antes de enviar ejemplos. Si falta la clave, hay timeout, cuota, error o respuesta inválida, se conserva el informe determinístico.
+La llamada ocurre únicamente al pulsar **Generar informe con IA**. Se envían conteos, porcentajes, confianza media, temas y Pareto. Nunca se envían comentarios, el CSV completo ni sus otras columnas. Si falta la clave, hay timeout, cuota, error o respuesta inválida, se conserva el informe determinístico.
 
 ## Estructura
 
