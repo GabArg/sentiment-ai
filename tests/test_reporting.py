@@ -43,10 +43,13 @@ def test_deterministic_report_contains_calculated_sections():
     assert "Positivos: **4** (40.0%)" in report
     assert "entrega tarde" in report
     assert "Limitaciones" in report
+    assert report.encode("utf-8").decode("utf-8") == report
 
 
 def test_ai_context_contains_only_aggregates():
-    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
+    pareto = pareto_fixture()
+    pareto.loc[0, "topic"] = "Ana private@example.com +54 11 5555-1234 DNI 12345678"
+    context = prepare_ai_context(metrics_fixture(), pareto)
     serialized = str(context)
     assert set(context) == {
         "total_comments",
@@ -58,7 +61,9 @@ def test_ai_context_contains_only_aggregates():
         "methodology",
     }
     assert "private@example.com" not in serialized
+    assert "Ana" not in serialized and "5555" not in serialized and "12345678" not in serialized
     assert "name" not in context and "email" not in context
+    assert context["negative_topic_pareto"][0]["topic_rank"] == 1
 
 
 def test_versioned_prompt_forbids_inventing_metrics():
@@ -85,14 +90,21 @@ def test_valid_provider_response_is_returned():
     )
     completions = SimpleNamespace(create=lambda **kwargs: response)
     client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    factory_kwargs = {}
+
+    def factory(**kwargs):
+        factory_kwargs.update(kwargs)
+        return client
+
     report, used_ai, error = generate_report_with_fallback(
         "deterministic",
         {"total": 1},
         api_key="test-key",
-        client_factory=lambda **kwargs: client,
+        client_factory=factory,
     )
     assert report == content.strip()
     assert used_ai is True and error is None
+    assert factory_kwargs == {"api_key": "test-key", "timeout": 30.0}
 
 
 def test_invalid_provider_response_uses_fallback():
