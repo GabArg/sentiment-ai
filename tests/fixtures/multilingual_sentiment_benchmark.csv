@@ -1,0 +1,49 @@
+text,expected_sentiment,language,category
+Excelente atención y entrega rápida.,Positivo,es,soporte
+El producto funciona de maravilla.,Positivo,es,producto
+No esperaba que fuera tan bueno.,Positivo,es,negacion
+Todo perfecto; lo recomiendo.,Positivo,es,coloquial
+La calidad es terrible.,Negativo,es,producto
+No resolvieron mi reclamo.,Negativo,es,negacion
+Llegó roto y muy tarde.,Negativo,es,entrega
+Pésimo soporte; no vuelvo.,Negativo,es,coloquial
+El pedido llegó el martes.,Neutro,es,factual
+La compra fue realizada en línea.,Neutro,es,factual
+El modelo es la versión 2025.,Neutro,es,producto
+El paquete contiene dos unidades.,Neutro,es,cantidad
+Excellent service and fast delivery.,Positivo,en,soporte
+The product works wonderfully.,Positivo,en,producto
+I did not expect it to be this good.,Positivo,en,negacion
+Everything was great; highly recommended.,Positivo,en,coloquial
+The quality is terrible.,Negativo,en,producto
+They did not resolve my complaint.,Negativo,en,negacion
+It arrived broken and very late.,Negativo,en,entrega
+Awful support; never again.,Negativo,en,coloquial
+The order arrived on Tuesday.,Neutro,en,factual
+The purchase was made online.,Neutro,en,factual
+This is model version 2025.,Neutro,en,producto
+The package contains two units.,Neutro,en,cantidad
+Atendimento excelente e entrega rápida.,Positivo,pt,soporte
+O produto funciona muito bem.,Positivo,pt,producto
+Não esperava que fosse tão bom.,Positivo,pt,negacion
+Tudo perfeito; recomendo muito.,Positivo,pt,coloquial
+A qualidade é terrível.,Negativo,pt,producto
+Não resolveram a minha reclamação.,Negativo,pt,negacion
+Chegou quebrado e muito atrasado.,Negativo,pt,entrega
+Suporte péssimo; nunca mais.,Negativo,pt,coloquial
+O pedido chegou na terça-feira.,Neutro,pt,factual
+A compra foi feita pela internet.,Neutro,pt,factual
+Este é o modelo versão 2025.,Neutro,pt,producto
+O pacote contém duas unidades.,Neutro,pt,cantidad
+Assistenza eccellente e consegna rapida.,Positivo,it,soporte
+Il prodotto funziona benissimo.,Positivo,it,producto
+Non pensavo che fosse così buono.,Positivo,it,negacion
+Tutto perfetto; lo consiglio.,Positivo,it,coloquial
+La qualità è terribile.,Negativo,it,producto
+Non hanno risolto il mio reclamo.,Negativo,it,negacion
+È arrivato rotto e molto tardi.,Negativo,it,entrega
+Assistenza pessima; mai più.,Negativo,it,coloquial
+L'ordine è arrivato martedì.,Neutro,it,factual
+L'acquisto è stato effettuato online.,Neutro,it,factual
+Questo è il modello versione 2025.,Neutro,it,producto
+La confezione contiene due unità.,Neutro,it,cantidad
