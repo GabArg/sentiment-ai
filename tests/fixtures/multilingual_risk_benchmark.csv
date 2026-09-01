@@ -1,0 +1,25 @@
+text,expected_sentiment,language,group,negation_type
+Excelente atención.,Positivo,es,spanish_short,none
+Muy buen producto.,Positivo,es,spanish_short,none
+No está nada mal.,Positivo,es,spanish_short,contrast
+La calidad es terrible.,Negativo,es,spanish_short,none
+No resolvieron mi reclamo.,Negativo,es,spanish_short,negative
+Pésimo soporte; no vuelvo.,Negativo,es,spanish_short,negative
+Llegó el martes.,Neutro,es,spanish_short,none
+Pedido número 2025.,Neutro,es,spanish_short,none
+The service was not bad.,Positivo,en,negation,contrast
+I would not buy this again.,Negativo,en,negation,negative
+The order did not arrive late.,Neutro,en,negation,factual
+It is not what I expected.,Negativo,en,negation,ambiguous
+O serviço não foi ruim.,Positivo,pt,negation,contrast
+Eu não compraria isto novamente.,Negativo,pt,negation,negative
+O pedido não chegou atrasado.,Neutro,pt,negation,factual
+Não era o que eu esperava.,Negativo,pt,negation,ambiguous
+Il servizio non era male.,Positivo,it,negation,contrast
+Non comprerei di nuovo questo prodotto.,Negativo,it,negation,negative
+L'ordine non è arrivato in ritardo.,Neutro,it,negation,factual
+Non è quello che mi aspettavo.,Negativo,it,negation,ambiguous
+La atención fue excelente y volvería a comprar.,Positivo,es,control,none
+The order arrived on Tuesday afternoon.,Neutro,en,control,none
+O produto chegou quebrado e muito atrasado.,Negativo,pt,control,none
+Il servizio è stato eccellente e comprerei di nuovo.,Positivo,it,control,none
