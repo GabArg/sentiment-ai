@@ -20,4 +20,6 @@ def test_batch_page_can_be_opened_without_data():
     app.radio[0].set_value(app.radio[0].options[1]).run()
 
     assert not app.exception
-    assert len(app.file_uploader) == 1
+    assert any(item.value == "Análisis masivo" for item in app.header)
+    assert any("Subí un CSV" in item.value for item in app.markdown)
+    assert any("no se envía a Cerebras" in item.value for item in app.info)
