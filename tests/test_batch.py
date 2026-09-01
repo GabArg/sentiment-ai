@@ -2,7 +2,30 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.batch import analyze_dataframe
+from src.batch import analyze_dataframe, analyze_dataframe_hybrid
+from src.hybrid_config import HybridRoutingConfig
+from src.rate_pacer import RatePacer
+from src.sentiment_review import ReviewResult
+
+
+class CountingProvider:
+    def __init__(self, sentiment="Neutro", success=True, error_code=None):
+        self.sentiment = sentiment
+        self.success = success
+        self.error_code = error_code
+        self.received = []
+
+    def review_sentiment(self, text):
+        self.received.append(text)
+        return ReviewResult(
+            self.sentiment if self.success else None,
+            0.99 if self.success else None,
+            None,
+            "mock",
+            "mock-v1",
+            self.success,
+            self.error_code,
+        )
 
 
 def test_dataframe_analysis_filters_nulls_and_returns_probabilities(predictor):
@@ -28,3 +51,59 @@ def test_processed_csv_export_has_utf8_bom_and_expected_columns(predictor):
     decoded = payload.decode("utf-8-sig")
     assert "Excelente atención" in decoded
     assert decoded.splitlines()[0].split(",") == list(result.columns)
+
+
+def test_hybrid_batch_calls_only_routed_cases_and_preserves_order(predictor):
+    texts = ["Excelente atención, volvería a comprar.", "Me resolvieron el problema de inmediato."]
+    provider = CountingProvider("Negativo")
+    config = HybridRoutingConfig(max_reviews_per_batch=25)
+    result, dropped, summary = analyze_dataframe_hybrid(
+        pd.DataFrame({"text": texts}), "text", predictor, provider, config
+    )
+    assert dropped == 0
+    assert result["text"].tolist() == texts
+    assert len(provider.received) == summary["reviews_attempted"] == 1
+    assert result.loc[0, "review_state"] == "local_only"
+    assert result.loc[1, "sentiment"] == "Negativo"
+    assert list(result.columns)[-11:] == [
+        "local_sentiment", "local_confidence", "review_requested", "review_reasons",
+        "review_state", "review_sentiment", "review_provider", "review_model",
+        "review_latency_ms", "fallback_used", "review_error_code",
+    ]
+
+
+def test_hybrid_batch_enforces_budget_and_marks_fallback(predictor):
+    provider = CountingProvider()
+    config = HybridRoutingConfig(max_reviews_per_batch=1)
+    frame = pd.DataFrame({"text": ["Me resolvieron el problema de inmediato.", "El pedido llegó el martes por la tarde."]})
+    result, _, summary = analyze_dataframe_hybrid(frame, "text", predictor, provider, config)
+    assert len(provider.received) == 1
+    assert summary["review_budget_exceeded"] == 1
+    exceeded = result[result.review_error_code == "review_budget_exceeded"].iloc[0]
+    assert exceeded.review_state == "fallback_local"
+    assert exceeded.sentiment == exceeded.local_sentiment
+
+
+def test_hybrid_batch_provider_failure_falls_back(predictor):
+    provider = CountingProvider(success=False, error_code="rate_limited")
+    result, _, _ = analyze_dataframe_hybrid(
+        pd.DataFrame({"text": ["Me resolvieron el problema de inmediato."]}),
+        "text", predictor, provider, HybridRoutingConfig(),
+    )
+    assert result.loc[0, "review_state"] == "fallback_local"
+    assert result.loc[0, "review_error_code"] == "rate_limited"
+    assert result.loc[0, "sentiment"] == result.loc[0, "local_sentiment"]
+
+
+def test_missing_key_does_not_wait_or_consume_external_budget(predictor):
+    provider = CountingProvider(success=False, error_code="unavailable")
+    provider.api_key = None
+    waits = []
+    pacer = RatePacer(1, 60, sleeper=lambda seconds: waits.append(seconds))
+    frame = pd.DataFrame({"text": ["Me resolvieron el problema de inmediato.", "El pedido llegó el martes por la tarde."]})
+    result, _, summary = analyze_dataframe_hybrid(
+        frame, "text", predictor, provider, HybridRoutingConfig(max_reviews_per_batch=1), pacer=pacer
+    )
+    assert waits == []
+    assert summary["review_budget_exceeded"] == 0
+    assert set(result.review_error_code) == {"unavailable"}

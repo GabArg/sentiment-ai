@@ -56,3 +56,20 @@ def test_unknown_signal_and_invalid_threshold_are_rejected():
         route_prediction(observation(0.90, 0.50), additional_signals=["weekday_rule"])
     with pytest.raises(ValueError, match="between 0 and 1"):
         ReviewRouterConfig(margin_threshold=1.1)
+
+
+@pytest.mark.parametrize(
+    ("local_class", "threshold"),
+    [("Negativo", 0.80), ("Neutro", 0.65), ("Positivo", 0.60)],
+)
+def test_class_thresholds_use_strict_less_than(local_class, threshold):
+    config = ReviewRouterConfig(
+        confidence_threshold=None,
+        class_thresholds={"Negativo": 0.80, "Neutro": 0.65, "Positivo": 0.60},
+    )
+    exact = PredictionObservability(local_class, threshold, "Neutro", 0.1, threshold - 0.1)
+    below = PredictionObservability(local_class, threshold - 0.001, "Neutro", 0.1, threshold - 0.101)
+    assert not route_prediction(exact, config).should_review
+    decision = route_prediction(below, config)
+    assert decision.should_review
+    assert decision.reasons == (f"low_confidence:{local_class}<{threshold:.2f}",)

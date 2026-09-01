@@ -101,3 +101,28 @@ def test_prompt_defines_factual_neutral_and_is_classification_only():
 def test_review_result_validates_success_contract():
     with pytest.raises(ValueError, match="allowed sentiment"):
         ReviewResult("Mixto", None, None, "mock", "mock", True)
+
+
+def test_provider_passes_retry_policy_to_sdk_factory():
+    factory_kwargs = {}
+    content = json.dumps({"sentiment": "Neutro"})
+    base_factory = client_factory_for(content)
+
+    def factory(**kwargs):
+        factory_kwargs.update(kwargs)
+        return base_factory(**kwargs)
+
+    result = CerebrasSentimentReviewProvider(
+        api_key="test-key", client_factory=factory, timeout=12.0, max_retries=0
+    ).review_sentiment("texto")
+    assert result.success
+    assert factory_kwargs["timeout"] == 12.0
+    assert factory_kwargs["max_retries"] == 0
+
+
+def test_sdk_timeout_type_is_normalized():
+    timeout = type("APITimeoutError", (RuntimeError,), {})()
+    provider = CerebrasSentimentReviewProvider(
+        api_key="test-key", client_factory=client_factory_for(None, exception=timeout)
+    )
+    assert provider.review_sentiment("texto").error_code == "timeout"

@@ -7,6 +7,8 @@ import pytest
 from src.evaluation import load_benchmark
 from src.hybrid import evaluate_hybrid_benchmark, evaluate_hybrid_text
 from src.review_router import ReviewRouterConfig
+from src.hybrid_config import HybridRoutingConfig
+from src.review_router import route_prediction
 from src.sentiment_review import ReviewResult
 
 
@@ -97,3 +99,21 @@ def test_hybrid_benchmark_records_local_fallback_without_key(predictor):
         "hybrid_correct",
         "provider_status",
     }.issubset(comparison.columns)
+
+
+def test_controlled_thresholds_reproduce_exploratory_router_benchmark(predictor):
+    benchmark = load_benchmark()
+    config = HybridRoutingConfig().router_config()
+    reviewed = captured = errors = 0
+    for row in benchmark.itertuples(index=False):
+        observation = predictor.observe_one(row.text)
+        decision = route_prediction(observation, config)
+        local_error = observation.local_prediction != row.expected_sentiment
+        reviewed += decision.should_review
+        errors += local_error
+        captured += decision.should_review and local_error
+    assert reviewed == 43
+    assert errors == 29
+    assert captured == 26
+    # Evaluation-only upper bound using the previously observed perfect reviews.
+    assert (len(benchmark) - (errors - captured)) / len(benchmark) == pytest.approx(0.95)
