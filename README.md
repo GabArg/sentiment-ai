@@ -42,7 +42,7 @@ La v2 no reentrena el modelo. Incluye un benchmark externo/manual reproducible d
 
 La confianza es la probabilidad interna asignada por el clasificador, no una garantía de acierto. Existen errores con confianza igual o superior a 80 %, por lo que ese valor no debe interpretarse como certeza ni como regla suficiente para una futura arquitectura híbrida. La metodología, observabilidad y discrepancia de preprocessing están documentadas en [docs/quality-evaluation.md](docs/quality-evaluation.md).
 
-La arquitectura híbrida de Fase 2 existe únicamente como experimento desacoplado: evalúa incertidumbre, permite un second check estructurado y aplica fallback local, pero no reemplaza la predicción visible ni llama Cerebras desde la UI. Véase [docs/hybrid-classification.md](docs/hybrid-classification.md).
+La arquitectura híbrida de Fase 2.2 está disponible como preview experimental y **opt-in**. Permanece desactivada por defecto, por lo que la UI y los resultados siguen siendo locales salvo configuración explícita. Cuando se habilita, usa routing por clase, second check estructurado, fallback local, budget y pacing. En el benchmark manual versionado de 60 casos alcanzó 95% con 43 revisiones; no representa accuracy productiva. Véase [docs/hybrid-classification.md](docs/hybrid-classification.md).
 
 ### Prueba multilingüe exploratoria
 
@@ -83,7 +83,9 @@ src/reporting.py               prompt e informe determinístico
 src/ai_provider.py             integración opcional y fallback
 src/review_router.py           reglas experimentales de incertidumbre
 src/sentiment_review.py        contrato y adaptador de second check
-src/hybrid.py                  comparación local/híbrida sin activar la UI
+src/hybrid.py                  consolidación local/híbrida estructurada y reversible
+src/hybrid_config.py           feature flag, thresholds, budget y costo orientativo
+src/rate_pacer.py              pacing secuencial inyectable para batch
 src/router_evaluation.py       evaluación offline de estrategias
 models/                        artefactos joblib originales
 tests/                         pruebas unitarias y funcionales
@@ -133,6 +135,19 @@ Advanced settings > Secrets: CEREBRAS_API_KEY = "..."  # opcional
 ```
 
 Sin secret, toda la aplicación salvo la redacción IA continúa operativa.
+
+Para habilitar manualmente el preview híbrido:
+
+```toml
+ENABLE_HYBRID_SENTIMENT = true
+CEREBRAS_API_KEY = "..."
+HYBRID_THRESHOLD_NEGATIVE = 0.80
+HYBRID_THRESHOLD_NEUTRAL = 0.65
+HYBRID_THRESHOLD_POSITIVE = 0.60
+HYBRID_MAX_REVIEWS_PER_BATCH = 25
+```
+
+No habilites el flag únicamente por configurar la API key: son opciones independientes. Los thresholds son experimentales y reversibles; desactivar el flag restaura el comportamiento local sin cambiar artefactos.
 
 ## Evolución y atribución
 

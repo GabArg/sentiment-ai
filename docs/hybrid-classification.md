@@ -1,6 +1,50 @@
 # Clasificación híbrida experimental
 
-Esta fase crea una arquitectura paralela para medir un segundo chequeo sin modificar `predict_one()`, `predict_batch()` ni la predicción visible en Streamlit. No se hicieron llamadas reales a Cerebras y el resultado híbrido no es todavía el resultado oficial del producto.
+## Fase 2.2: modo controlado y opt-in
+
+La UI conserva el comportamiento local por defecto. El flujo controlado sólo se habilita explícitamente con:
+
+```toml
+ENABLE_HYBRID_SENTIMENT = true
+```
+
+Los thresholds exploratorios por clase local son:
+
+```text
+Negativo < 0.80
+Neutro   < 0.65
+Positivo < 0.60
+```
+
+El operador es estrictamente `<`. Estos valores fueron seleccionados y evaluados sobre el mismo benchmark manual de 60 casos: no son una calibración productiva. La configuración puede volver al baseline global de 0,80 mediante `ReviewRouterConfig` o desactivarse completamente con el feature flag.
+
+### Estados y consolidación
+
+- `local_only`: no se solicitó revisión; el resultado final es local.
+- `review_requested`: transición auditable previa al proveedor.
+- `reviewed`: second check válido y misma clase.
+- `disagreement`: second check válido y clase distinta; el resultado final usa la revisión.
+- `fallback_local`: falta de key, timeout, 429, error, respuesta inválida o budget agotado; conserva la clase local.
+
+El resultado estructurado conserva predicción/confianza/margen local, reasons, proveedor/modelo, latencia, error y si se utilizó fallback. La confidence declarada por Cerebras no decide la consolidación y no se muestra como certeza.
+
+### Individual, batch y latencia
+
+El modo individual construye el proveedor con `max_retries=0` para evitar esperas opacas causadas por retries internos. Un error produce fallback local y una advertencia segura, sin traceback.
+
+El batch es secuencial, usa `max_retries=1` como máximo y aplica pacing desacoplado: cinco requests por ventana de 60 segundos, con reloj y sleeper inyectables para tests. La UI muestra progreso y espera de ventana. El límite inicial es `HYBRID_MAX_REVIEWS_PER_BATCH=25`; los candidatos restantes se marcan `fallback_local` con `review_budget_exceeded`.
+
+Antes de ejecutar el batch se muestran cantidad prevista y costo orientativo usando USD 0,000178 por review, observado en una validación puntual. El costo real depende de tokens, modelo y precios.
+
+### Privacidad y separación de proveedores
+
+La clasificación local siempre ocurre primero. Sólo el texto del comentario derivado pasa por `anonymize_text`, que reemplaza emails, teléfonos, URLs e IDs largos. No se envían expected labels, predicciones locales, otras columnas ni filas completas. El second check y el informe ejecutivo mantienen prompts, estados, flags y acciones separados; habilitar el híbrido no genera un informe IA.
+
+### Benchmark y rollback
+
+En el benchmark manual versionado, el router por clase deriva 43/60 casos, captura 26 de 29 errores y alcanza un 95% híbrido al reproducir los resultados externos observados. Es evidencia exploratoria, no una métrica de producción. Rollback: establecer `ENABLE_HYBRID_SENTIMENT=false`; no requiere cambiar modelo, artefactos, preprocessing ni columnas locales existentes.
+
+La arquitectura preserva `predict_one()` y `predict_batch()`. Hubo validaciones reales controladas con Cerebras, pero el resultado híbrido sólo reemplaza la predicción visible cuando el feature flag experimental se habilita explícitamente; no es el default productivo.
 
 ## Arquitecturas y evidencia
 
@@ -68,7 +112,7 @@ El informe ejecutivo continúa enviando sólo agregados. Un second check cambia 
 
 Antes del proveedor se reemplazan email, teléfono, URL e IDs largos. No se envían filas, CSV, canal, región, segmento ni otras columnas. No se anonimizaron nombres propios porque una heurística no validada podría destruir significado y dar una falsa garantía de privacidad; queda como riesgo explícito.
 
-La UI todavía no llama este proveedor. Cuando se evalúe su activación, deberá informar que el modelo local procesa primero, sólo algunos textos son candidatos, existe anonimización parcial y el procesamiento externo es opcional.
+La UI sólo llama este proveedor cuando el feature flag opt-in está habilitado. Informa que el modelo local procesa primero, sólo algunos textos son candidatos, existe anonimización parcial y el procesamiento externo es opcional.
 
 ## Fallback y estados
 
@@ -92,7 +136,7 @@ Admite entre 1 y 10 `--text`. No imprime la API key. Si se usa `--output`, guard
 
 ## Limitaciones
 
-- No se midió todavía la calidad real de Cerebras sobre las 60 frases.
+- La validación controlada observó 50/50 aciertos de Cerebras sobre los casos derivados por el baseline, pero ese resultado pequeño no garantiza calidad futura.
 - El resultado híbrido sólo puede considerarse mejor después de una evaluación controlada con respuestas reales o un conjunto etiquetado independiente.
 - Confidence y margen no equivalen a probabilidad de error.
 - El benchmark actual tiene alto coverage de revisión, con implicaciones futuras de costo, latencia y privacidad.
