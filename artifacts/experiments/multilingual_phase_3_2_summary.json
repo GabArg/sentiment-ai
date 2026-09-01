@@ -1,0 +1,100 @@
+{
+  "new_calls": 30,
+  "call_breakdown": {
+    "sentiment_review": 21,
+    "translation": 9
+  },
+  "cases_b": 12,
+  "paired_cases": 9,
+  "architecture_a": {
+    "accuracy": 1.0,
+    "evaluated": 9,
+    "local_translated_accuracy": 0.3333333333333333,
+    "accuracy_by_class": {
+      "Negativo": 1.0,
+      "Neutro": 1.0,
+      "Positivo": 1.0
+    }
+  },
+  "architecture_b": {
+    "accuracy_on_successful_responses": 1.0,
+    "end_to_end_accuracy": 0.9166666666666666,
+    "evaluated": 11,
+    "failures": 1,
+    "paired_end_to_end_accuracy": 0.8888888888888888,
+    "accuracy_by_class": {
+      "Negativo": 1.0,
+      "Neutro": 1.0,
+      "Positivo": 1.0
+    }
+  },
+  "operations_by_architecture": {
+    "A": {
+      "calls": 18,
+      "calls_per_evaluated_comment": 2.0,
+      "cost_usd": 0.0030326999999998002,
+      "cost_per_evaluated_comment_usd": 0.0003369666666666445,
+      "mean_external_latency_ms_per_comment": 859.2818888880881,
+      "failures": 0
+    },
+    "B": {
+      "calls": 12,
+      "calls_per_evaluated_comment": 1.0,
+      "cost_usd": 0.0023462999999998998,
+      "cost_per_evaluated_comment_usd": 0.00019552499999999165,
+      "mean_external_latency_ms_per_comment": 480.2241916665177,
+      "failures": 1
+    }
+  },
+  "total_cost_usd": 0.005378999999999699,
+  "cost_by_call_type": {
+    "review_original": 0.0023462999999998998,
+    "review_translated": 0.00169565,
+    "translation": 0.0013370499999997999
+  },
+  "latency_by_call_type_ms": {
+    "review_original": {
+      "min": 330.8111999940593,
+      "median": 426.3964500023576,
+      "max": 1261.2089999965974,
+      "mean": 480.2241916665177
+    },
+    "review_translated": {
+      "min": 294.3061999976635,
+      "median": 417.3767000029329,
+      "max": 912.978699998348,
+      "mean": 456.5036111097369
+    },
+    "translation": {
+      "min": 306.4706000004662,
+      "median": 388.5890000019572,
+      "max": 566.6038999988814,
+      "mean": 402.77827777835125
+    }
+  },
+  "pacing_wait_seconds": 290.51899999997113,
+  "elapsed_seconds": 304.14778829999705,
+  "short_text_policy": {
+    "cases": 20,
+    "captured": 20,
+    "language_distribution": {
+      "es": 8,
+      "en": 4,
+      "pt": 4,
+      "it": 4
+    },
+    "detector_accuracy": 0.5,
+    "detector_accuracy_by_language": {
+      "en": 0.25,
+      "es": 0.5,
+      "it": 0.75,
+      "pt": 0.5
+    },
+    "default_spanish_would_be_wrong": 12
+  },
+  "artifacts": {
+    "results": "C:\\Users\\Admin\\Desktop\\sentiment-ai\\sentiment-ai-recovered\\artifacts\\experiments\\multilingual_phase_3_2_results.jsonl",
+    "summary": "C:\\Users\\Admin\\Desktop\\sentiment-ai\\sentiment-ai-recovered\\artifacts\\experiments\\multilingual_phase_3_2_summary.json",
+    "costs": "C:\\Users\\Admin\\Desktop\\sentiment-ai\\sentiment-ai-recovered\\artifacts\\experiments\\multilingual_phase_3_2_costs.csv"
+  }
+}
