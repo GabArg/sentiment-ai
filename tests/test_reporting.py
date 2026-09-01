@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 
 from src.ai_provider import generate_report_with_fallback
 from src.reporting import (
@@ -44,16 +45,19 @@ def test_deterministic_report_contains_calculated_sections():
     assert "Limitaciones" in report
 
 
-def test_ai_context_is_minimized_and_anonymized():
-    context = prepare_ai_context(
-        metrics_fixture(),
-        pareto_fixture(),
-        examples=["Escribime a private@example.com o al +54 11 5555-1234"],
-    )
+def test_ai_context_contains_only_aggregates():
+    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
     serialized = str(context)
+    assert set(context) == {
+        "total_comments",
+        "sentiment_counts",
+        "sentiment_percentages",
+        "mean_model_confidence",
+        "critical_negative_count",
+        "negative_topic_pareto",
+        "methodology",
+    }
     assert "private@example.com" not in serialized
-    assert "5555" not in serialized
-    assert "[EMAIL]" in serialized and "[PHONE]" in serialized
     assert "name" not in context and "email" not in context
 
 
@@ -107,4 +111,55 @@ def test_invalid_provider_response_uses_fallback():
     assert report == "deterministic"
     assert used_ai is False
     assert "valid report" in error
+
+
+@pytest.mark.parametrize(
+    "provider_error",
+    [TimeoutError("timed out"), RuntimeError("429 quota"), RuntimeError("provider failed")],
+)
+def test_provider_exceptions_use_safe_deterministic_fallback(provider_error):
+    def failing_factory(**kwargs):
+        raise provider_error
+
+    report, used_ai, error = generate_report_with_fallback(
+        "deterministic",
+        {"total": 1},
+        api_key="secret-value-must-not-leak",
+        client_factory=failing_factory,
+    )
+    assert report == "deterministic"
+    assert used_ai is False
+    assert error == "Cerebras could not generate a valid report."
+    assert "secret-value" not in error
+
+
+@pytest.mark.parametrize("content", [None, "", "too short"])
+def test_empty_or_short_provider_responses_use_fallback(content):
+    response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+    )
+    client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **kwargs: response))
+    )
+    report, used_ai, error = generate_report_with_fallback(
+        "deterministic",
+        {"total": 1},
+        api_key="test-key",
+        client_factory=lambda **kwargs: client,
+    )
+    assert (report, used_ai) == ("deterministic", False)
+    assert error == "Cerebras could not generate a valid report."
+
+
+def test_missing_choices_uses_fallback():
+    client = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(create=lambda **kwargs: SimpleNamespace(choices=[]))
+        )
+    )
+    report, used_ai, error = generate_report_with_fallback(
+        "deterministic", {"total": 1}, api_key="test-key", client_factory=lambda **kwargs: client
+    )
+    assert (report, used_ai) == ("deterministic", False)
+    assert error == "Cerebras could not generate a valid report."
 

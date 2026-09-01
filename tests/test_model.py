@@ -20,6 +20,13 @@ def test_individual_rejects_blank_text(predictor):
         predictor.predict_one(" ")
 
 
+def test_individual_rejects_too_short_and_too_long_text(predictor):
+    with pytest.raises(ValueError):
+        predictor.predict_one("x")
+    with pytest.raises(ValueError, match="5,000"):
+        predictor.predict_one("x" * 5_001)
+
+
 def test_batch_prediction_is_vectorized_and_complete(predictor):
     texts = [
         "Excelente servicio, todo llegó a tiempo.",
@@ -40,4 +47,5 @@ def test_batch_prediction_is_vectorized_and_complete(predictor):
         result[["probability_negativo", "probability_neutro", "probability_positivo"]].sum(axis=1),
         1.0,
     )
+    assert result["text"].tolist() == texts
 

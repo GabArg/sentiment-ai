@@ -33,3 +33,23 @@ def test_pareto_rejects_invalid_threshold():
     with pytest.raises(ValueError):
         calculate_pareto(pd.DataFrame(), threshold=1.2)
 
+
+def test_pareto_selects_minimum_rows_that_reach_threshold():
+    result = calculate_pareto(
+        pd.DataFrame({"topic": ["a", "b", "c"], "frequency": [6, 3, 1]})
+    )
+    assert result["cumulative_percentage"].tolist() == pytest.approx([60, 90, 100])
+    assert result["within_80_percent"].tolist() == [True, True, False]
+
+
+def test_pareto_handles_empty_single_and_tied_topics():
+    assert calculate_pareto(pd.DataFrame()).empty
+    single = calculate_pareto(pd.DataFrame({"topic": ["único"], "frequency": [4]}))
+    assert single["percentage"].tolist() == pytest.approx([100])
+    assert single["within_80_percent"].tolist() == [True]
+    tied = calculate_pareto(
+        pd.DataFrame({"topic": ["beta", "alfa"], "frequency": [2, 2]})
+    )
+    assert tied["topic"].tolist() == ["alfa", "beta"]
+    assert tied["cumulative_percentage"].tolist() == pytest.approx([50, 100])
+
