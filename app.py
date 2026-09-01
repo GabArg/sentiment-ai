@@ -16,10 +16,20 @@ import streamlit as st
 
 from src.ai_provider import DEFAULT_CEREBRAS_MODEL, generate_report_with_fallback
 from src.analytics import calculate_metrics, sentiment_distribution
-from src.batch import analyze_dataframe, analyze_dataframe_hybrid, estimate_hybrid_reviews
+from src.batch import (
+    analyze_dataframe,
+    analyze_dataframe_hybrid,
+    analyze_dataframe_multilingual,
+    estimate_hybrid_reviews,
+    estimate_multilingual_translations,
+)
+from src.external_requests import ExternalRequestCoordinator
 from src.hybrid import evaluate_hybrid_text
 from src.hybrid_config import HybridRoutingConfig, load_hybrid_config
+from src.language_detection import LocalLanguageDetector
 from src.model import SentimentPredictor
+from src.multilingual_config import MultilingualConfig, load_multilingual_config
+from src.multilingual_pipeline import evaluate_multilingual_sentiment
 from src.pareto import calculate_pareto, extract_negative_topics
 from src.preprocessing import CSVValidationError, read_csv_upload
 from src.reporting import (
@@ -28,6 +38,8 @@ from src.reporting import (
     prepare_ai_context,
 )
 from src.sentiment_review import CerebrasSentimentReviewProvider
+from src.rate_pacer import RatePacer
+from src.translation import CerebrasTranslationProvider
 
 
 MAX_TEXT_LENGTH = 5_000
@@ -37,6 +49,17 @@ REVIEW_STATE_LABELS = {
     "reviewed": "Validado por second check",
     "disagreement": "Corregido por second check",
     "fallback_local": "Fallback local",
+}
+LANGUAGE_NAMES = {"es": "Español", "en": "Inglés", "pt": "Portugués", "it": "Italiano"}
+TRANSLATION_STATE_LABELS = {
+    "not_needed": "No necesaria",
+    "translated": "Aplicada",
+    "fallback_original": "Fallback al original",
+    "unsupported_language": "Idioma no soportado",
+    "detection_error": "Error de detección",
+}
+EXTERNAL_ERROR_LABELS = {
+    "external_budget_exceeded": "Límite de llamadas externas alcanzado",
 }
 
 st.set_page_config(
@@ -54,6 +77,10 @@ def get_predictor() -> SentimentPredictor:
 
 def get_hybrid_config() -> HybridRoutingConfig:
     return load_hybrid_config(st.secrets)
+
+
+def get_multilingual_config() -> MultilingualConfig:
+    return load_multilingual_config(st.secrets)
 
 
 def get_batch_results() -> pd.DataFrame | None:
@@ -182,11 +209,16 @@ def render_batch() -> None:
 
 def render_individual_controlled() -> None:
     config = get_hybrid_config()
-    if not config.enabled:
+    multilingual = get_multilingual_config()
+    if not config.enabled and not multilingual.enabled:
         render_individual()
         return
     st.header("Análisis individual")
-    st.write("La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado.")
+    if multilingual.enabled:
+        st.write("El idioma se detecta localmente. Los textos que requieren traducción se anonimizan antes de enviarse al proveedor externo.")
+        st.caption("La detección puede ser menos fiable en textos breves o ambiguos.")
+    else:
+        st.write("La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado.")
     with st.form("individual_form"):
         text = st.text_area("Comentario", max_chars=MAX_TEXT_LENGTH, height=180)
         submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
@@ -197,16 +229,37 @@ def render_individual_controlled() -> None:
         return
     try:
         predictor = get_predictor()
-        prediction = predictor.predict_one(text)
-        result = evaluate_hybrid_text(
-            text,
-            predictor,
-            config=config.router_config(),
-            provider=CerebrasSentimentReviewProvider(
-                api_key=_streamlit_cerebras_key(),
-                max_retries=0,
-            ),
-        )
+        if multilingual.enabled:
+            coordinator = ExternalRequestCoordinator(
+                multilingual.max_external_calls_per_batch,
+                RatePacer(config.max_requests, config.window_seconds, config.pacing_margin_seconds),
+            )
+            combined = evaluate_multilingual_sentiment(
+                text,
+                predictor,
+                True,
+                LocalLanguageDetector(),
+                CerebrasTranslationProvider(api_key=_streamlit_cerebras_key(), max_retries=0),
+                config,
+                CerebrasSentimentReviewProvider(api_key=_streamlit_cerebras_key(), max_retries=0)
+                if config.enabled else None,
+                coordinator,
+            )
+            result = combined.sentiment
+            preparation = combined.preparation
+            prediction = predictor.predict_one(preparation.analysis_text)
+        else:
+            preparation = None
+            prediction = predictor.predict_one(text)
+            result = evaluate_hybrid_text(
+                text,
+                predictor,
+                config=config.router_config(),
+                provider=CerebrasSentimentReviewProvider(
+                    api_key=_streamlit_cerebras_key(),
+                    max_retries=0,
+                ),
+            )
     except Exception:
         st.error("No fue posible analizar el texto con los artefactos locales.")
         return
@@ -244,6 +297,19 @@ def render_individual_controlled() -> None:
         figure.update_xaxes(tickformat=".0%", range=[0, 1])
         st.plotly_chart(figure, use_container_width=True)
     st.caption("La confianza mostrada es una estimación interna del modelo local; no representa confianza del resultado híbrido.")
+    if preparation is not None:
+        language_label = preparation.language_name or preparation.detected_language or "No determinado"
+        st.markdown(f"**Idioma detectado:** {language_label}")
+        st.markdown(f"**Traducción:** {TRANSLATION_STATE_LABELS[preparation.translation_state]}")
+        if preparation.translation_state == "translated":
+            with st.expander("Texto usado para análisis"):
+                st.caption("Traducción utilizada para el análisis; no es el texto original.")
+                st.write(preparation.translated_text)
+        elif preparation.translation_state == "fallback_original":
+            if preparation.translation_error_code == "external_budget_exceeded":
+                st.warning("Límite de llamadas externas alcanzado; el análisis continuó con el texto original.")
+            else:
+                st.warning("La traducción externa no estuvo disponible; el análisis continuó con el texto original.")
     if result.review_state == "disagreement":
         st.info("El second check modificó la clasificación inicial.")
     elif result.review_state == "reviewed":
@@ -266,14 +332,21 @@ def render_individual_controlled() -> None:
 
 def render_batch_controlled() -> None:
     config = get_hybrid_config()
-    if not config.enabled:
+    multilingual = get_multilingual_config()
+    if not config.enabled and not multilingual.enabled:
         render_batch()
         return
     st.header("Análisis masivo")
-    st.write("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
+    if multilingual.enabled:
+        st.write("La detección local y la traducción controlada ocurren antes del análisis de sentimiento.")
+    else:
+        st.write("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
     if uploaded is None:
-        st.info("Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV.")
+        if multilingual.enabled:
+            st.info("Los textos que requieren traducción se anonimizan antes de enviarse a Cerebras. Sólo se envía el comentario anonimizado, sin otras columnas; el original queda preservado en la app.")
+        else:
+            st.info("Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV.")
         return
     try:
         frame = read_csv_upload(uploaded.getvalue())
@@ -284,41 +357,80 @@ def render_batch_controlled() -> None:
     st.dataframe(frame.head(20), width="stretch", hide_index=True)
     column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
     try:
-        requested, allowed, _ = estimate_hybrid_reviews(frame, column, get_predictor(), config)
-        st.info(
-            f"Revisiones previstas: {requested:,}. Máximo a ejecutar: {allowed:,}. "
-            f"Costo orientativo observado: ~USD {allowed * config.estimated_review_cost_usd:.4f}. "
-            "Es una estimación; el costo real depende de tokens, modelo y precios."
-        )
+        if multilingual.enabled:
+            translations, _ = estimate_multilingual_translations(frame, column, LocalLanguageDetector())
+            review_note = "Los second checks se determinan después de traducir y clasificar." if config.enabled else "Second checks desactivados."
+            st.info(
+                f"Traducciones previstas: {translations:,}. Límite total de llamadas externas: "
+                f"{multilingual.max_external_calls_per_batch:,}. {review_note}"
+            )
+        else:
+            requested, allowed, _ = estimate_hybrid_reviews(frame, column, get_predictor(), config)
+            st.info(
+                f"Revisiones previstas: {requested:,}. Máximo a ejecutar: {allowed:,}. "
+                f"Costo orientativo observado: ~USD {allowed * config.estimated_review_cost_usd:.4f}. "
+                "Es una estimación; el costo real depende de tokens, modelo y precios."
+            )
     except (CSVValidationError, ValueError):
-        requested = allowed = 0
+        pass
     if st.button("Procesar comentarios", type="primary", width="stretch"):
         try:
             progress = st.progress(0, text="La clasificación local se ejecuta primero…")
             pacing_status = st.empty()
 
             def on_progress(current, total):
-                progress.progress(current / max(total, 1), text=f"Revisando con IA {current} de {total}")
+                label = "Procesando flujo multilenguaje" if multilingual.enabled else "Revisando con IA"
+                progress.progress(current / max(total, 1), text=f"{label} {current} de {total}")
 
             def on_pacing(_wait):
                 pacing_status.info("Esperando ventana de Cerebras para continuar…")
 
-            results, dropped, summary = analyze_dataframe_hybrid(
-                frame,
-                column,
-                get_predictor(),
-                CerebrasSentimentReviewProvider(api_key=_streamlit_cerebras_key(), max_retries=1),
-                config,
-                on_progress=on_progress,
-                on_pacing=on_pacing,
-            )
+            if multilingual.enabled:
+                coordinator = ExternalRequestCoordinator(
+                    multilingual.max_external_calls_per_batch,
+                    RatePacer(
+                        config.max_requests,
+                        config.window_seconds,
+                        config.pacing_margin_seconds,
+                    ),
+                    on_pacing,
+                )
+                results, dropped, summary = analyze_dataframe_multilingual(
+                    frame,
+                    column,
+                    get_predictor(),
+                    LocalLanguageDetector(),
+                    CerebrasTranslationProvider(api_key=_streamlit_cerebras_key(), max_retries=1),
+                    multilingual,
+                    config,
+                    CerebrasSentimentReviewProvider(api_key=_streamlit_cerebras_key(), max_retries=1)
+                    if config.enabled else None,
+                    coordinator,
+                    on_progress,
+                )
+            else:
+                results, dropped, summary = analyze_dataframe_hybrid(
+                    frame,
+                    column,
+                    get_predictor(),
+                    CerebrasSentimentReviewProvider(api_key=_streamlit_cerebras_key(), max_retries=1),
+                    config,
+                    on_progress=on_progress,
+                    on_pacing=on_pacing,
+                )
             progress.empty()
             pacing_status.empty()
             st.session_state["batch_results"] = results
             st.session_state["hybrid_summary"] = summary
             st.session_state.pop("ai_report", None)
             st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
-            if summary["review_budget_exceeded"]:
+            if multilingual.enabled:
+                st.info(
+                    f"Llamadas externas consumidas: {summary['external_calls_used']:,} de "
+                    f"{summary['external_call_limit']:,} (traducciones {summary['translations_attempted']:,}; "
+                    f"second checks {summary['reviews_attempted']:,})."
+                )
+            elif summary["review_budget_exceeded"]:
                 st.warning(f"{summary['review_budget_exceeded']:,} comentarios adicionales conservaron la clasificación local por límite de revisión IA.")
         except (CSVValidationError, ValueError) as exc:
             st.error(str(exc))
@@ -330,13 +442,19 @@ def render_batch_controlled() -> None:
         display = results.copy()
         if "review_state" in display:
             display["review_state"] = display["review_state"].map(REVIEW_STATE_LABELS).fillna("Estado desconocido")
+        if "translation_state" in display:
+            display["translation_state"] = display["translation_state"].map(TRANSLATION_STATE_LABELS).fillna("Estado desconocido")
+        if "translation_error_code" in display:
+            display["translation_error_code"] = display["translation_error_code"].map(
+                lambda value: EXTERNAL_ERROR_LABELS.get(value, value)
+            )
         percentage_columns = [name for name in display if name.startswith("probability_")]
         for name in ["confidence", "local_confidence"]:
             if name in display:
                 display[name] = display[name].map(lambda value: f"{value:.1%}")
         for name in percentage_columns:
             display[name] = display[name].map(lambda value: f"{value:.1%}")
-        display = display.rename(columns={"review_state": "Estado de revisión"})
+        display = display.rename(columns={"review_state": "Estado de revisión", "translation_state": "Estado de traducción"})
         st.dataframe(display.head(100), width="stretch", hide_index=True)
         summary = st.session_state.get("hybrid_summary")
         if isinstance(summary, dict):
@@ -513,6 +631,7 @@ def render_report() -> None:
 
 def render_about() -> None:
     hybrid_enabled = get_hybrid_config().enabled
+    multilingual_enabled = get_multilingual_config().enabled
     st.header("Acerca del proyecto")
     st.markdown(
         """
@@ -526,7 +645,9 @@ def render_about() -> None:
         """
     )
     st.subheader("Privacidad")
-    if hybrid_enabled:
+    if multilingual_enabled:
+        st.write("La detección de idioma es local. Los comentarios que requieren traducción se anonimizan antes de enviarse a Cerebras; nunca se envían otras columnas del CSV y el texto original queda preservado en la app. Los second checks, si están habilitados por separado, comparten el mismo límite externo.")
+    elif hybrid_enabled:
         st.write("La clasificación local ocurre primero. Sólo comentarios derivados pueden enviarse anonimizados a Cerebras para second check; nunca se envían otras columnas del CSV. El informe IA permanece separado y sólo recibe agregados.")
     else:
         st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. Nunca se envían comentarios, el CSV ni sus otras columnas.")

@@ -4,9 +4,13 @@ import ast
 from pathlib import Path
 
 import pandas as pd
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from src.sentiment_review import CerebrasSentimentReviewProvider, ReviewResult
+from src.language_detection import LocalLanguageDetector
+from src.multilingual_contracts import LanguageDetectionResult, TranslationResult
+from src.translation import CerebrasTranslationProvider
 
 
 def test_all_plotly_charts_use_supported_streamlit_150_arguments():
@@ -167,3 +171,104 @@ def test_dashboard_uses_human_hybrid_traceability_labels(monkeypatch):
     assert "Corregidos por second check" in trace
     assert "Fallback local" in trace
     assert "local_only" not in trace and "disagreement" not in trace
+
+
+def _mock_translation(source_language, translated_text, *, success=True, error_code=None):
+    return TranslationResult(
+        source_language,
+        "es",
+        "anon",
+        translated_text if success else None,
+        "mock-translation",
+        "mock-v1",
+        success,
+        latency_ms=12.0,
+        error_code=error_code,
+    )
+
+
+def _run_multilingual_case(monkeypatch, text, translation_result=None):
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", "true")
+    monkeypatch.setenv("CEREBRAS_API_KEY", "test-key")
+    if translation_result is not None:
+        monkeypatch.setattr(
+            CerebrasTranslationProvider,
+            "translate",
+            lambda _provider, *_args: translation_result,
+        )
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.text_area[0].set_value(text)
+    app.button[0].click().run()
+    assert not app.exception
+    return app
+
+
+def test_multilingual_spanish_shows_detection_without_translation(monkeypatch):
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", "true")
+    monkeypatch.setattr(
+        CerebrasTranslationProvider,
+        "translate",
+        lambda *_: (_ for _ in ()).throw(AssertionError("Spanish must not translate")),
+    )
+    app = _run_multilingual_case(monkeypatch, "La atención fue excelente y la entrega llegó rápido.")
+    visible = " ".join(item.value for item in app.markdown)
+    assert "Idioma detectado:** Español" in visible
+    assert "Traducción:** No necesaria" in visible
+
+
+@pytest.mark.parametrize(
+    ("text", "language", "code"),
+    [
+        ("The service was excellent and delivery was fast.", "Inglés", "en"),
+        ("O atendimento foi excelente e a entrega foi rápida.", "Portugués", "pt"),
+        ("Il servizio è stato eccellente e la consegna rapida.", "Italiano", "it"),
+    ],
+)
+def test_multilingual_translation_success_is_clearly_labeled(monkeypatch, text, language, code):
+    app = _run_multilingual_case(monkeypatch, text, _mock_translation(code, "El servicio fue excelente."))
+    visible = " ".join(item.value for item in app.markdown)
+    assert f"Idioma detectado:** {language}" in visible
+    assert "Traducción:** Aplicada" in visible
+    assert any(item.label == "Texto usado para análisis" for item in app.expander)
+    assert any("no es el texto original" in item.value for item in app.caption)
+
+
+def test_multilingual_translation_failure_has_separate_fallback(monkeypatch):
+    app = _run_multilingual_case(
+        monkeypatch,
+        "The service was terrible and delivery was late.",
+        _mock_translation("en", None, success=False, error_code="timeout"),
+    )
+    assert any("Traducción:** Fallback al original" in item.value for item in app.markdown)
+    assert any("análisis continuó con el texto original" in item.value for item in app.warning)
+
+
+def test_multilingual_unsupported_and_detection_error(monkeypatch):
+    unsupported = _run_multilingual_case(monkeypatch, "Die Lieferung kam am Dienstag an.")
+    assert any("Traducción:** Idioma no soportado" in item.value for item in unsupported.markdown)
+
+    monkeypatch.setattr(
+        LocalLanguageDetector,
+        "detect",
+        lambda *_: LanguageDetectionResult(None, None, False, None, "mock", False, "error", "failed"),
+    )
+    failed = _run_multilingual_case(monkeypatch, "Texto suficientemente largo")
+    assert any("Traducción:** Error de detección" in item.value for item in failed.markdown)
+
+
+def test_multilingual_and_hybrid_keep_translation_and_review_states_separate(monkeypatch):
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT", "true")
+    monkeypatch.setattr(
+        CerebrasSentimentReviewProvider,
+        "review_sentiment",
+        lambda _provider, text: _mock_review("Negativo") if text == "La calidad es terrible." else None,
+    )
+    app = _run_multilingual_case(
+        monkeypatch,
+        "The quality is terrible.",
+        _mock_translation("en", "La calidad es terrible."),
+    )
+    visible = " ".join(item.value for item in app.markdown)
+    assert "Traducción:** Aplicada" in visible
+    assert "Estado:** Corregido por second check" in visible
+    assert any(item.label == "Resultado final" and item.value == "Negativo" for item in app.metric)

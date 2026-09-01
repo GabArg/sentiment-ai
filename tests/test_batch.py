@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.batch import analyze_dataframe, analyze_dataframe_hybrid
+from src.batch import analyze_dataframe, analyze_dataframe_hybrid, analyze_dataframe_multilingual
+from src.external_requests import ExternalRequestCoordinator
 from src.hybrid_config import HybridRoutingConfig
+from src.language_detection import LocalLanguageDetector
+from src.multilingual_config import MultilingualConfig
+from src.multilingual_contracts import TranslationResult
 from src.rate_pacer import RatePacer
 from src.sentiment_review import ReviewResult
 
@@ -25,6 +29,30 @@ class CountingProvider:
             "mock-v1",
             self.success,
             self.error_code,
+        )
+
+
+class MockTranslator:
+    api_key = "test"
+
+    def __init__(self):
+        self.received = []
+
+    def translate(self, text, source_language, target_language="es"):
+        self.received.append((text, source_language, target_language))
+        translations = {
+            "en": "El servicio fue excelente.",
+            "pt": "El pedido llegó el martes.",
+            "it": "El producto llegó roto.",
+        }
+        return TranslationResult(
+            source_language,
+            target_language,
+            text,
+            translations[source_language],
+            "mock",
+            "mock-v1",
+            True,
         )
 
 
@@ -107,3 +135,53 @@ def test_missing_key_does_not_wait_or_consume_external_budget(predictor):
     assert waits == []
     assert summary["review_budget_exceeded"] == 0
     assert set(result.review_error_code) == {"unavailable"}
+
+
+def test_multilingual_batch_preserves_original_columns_and_hides_processed_text(predictor):
+    frame = pd.DataFrame(
+        {
+            "comment": ["The service was excellent and delivery was fast.", "El pedido llegó el martes."],
+            "region": ["north", "south"],
+        }
+    )
+    translator = MockTranslator()
+    coordinator = ExternalRequestCoordinator(25, RatePacer(5, 60))
+    result, dropped, summary = analyze_dataframe_multilingual(
+        frame,
+        "comment",
+        predictor,
+        LocalLanguageDetector(),
+        translator,
+        MultilingualConfig(enabled=True),
+        HybridRoutingConfig(enabled=False),
+        None,
+        coordinator,
+    )
+    assert dropped == 0 and result["region"].tolist() == ["north", "south"]
+    assert "translated_text" not in result and "analysis_text" not in result
+    assert list(result.columns)[-8:] == [
+        "detected_language", "language_supported", "translation_requested", "translation_state",
+        "translation_provider", "translation_model", "translation_latency_ms", "translation_error_code",
+    ]
+    assert summary["translations_attempted"] == summary["external_calls_used"] == 1
+
+
+def test_multilingual_batch_global_budget_is_shared_with_reviews(predictor):
+    frame = pd.DataFrame(
+        {"comment": ["The service was excellent and delivery was fast.", "O pedido chegou na terça-feira."]}
+    )
+    coordinator = ExternalRequestCoordinator(1, RatePacer(5, 60))
+    result, _, summary = analyze_dataframe_multilingual(
+        frame,
+        "comment",
+        predictor,
+        LocalLanguageDetector(),
+        MockTranslator(),
+        MultilingualConfig(enabled=True, max_external_calls_per_batch=1),
+        HybridRoutingConfig(enabled=True),
+        CountingProvider(),
+        coordinator,
+    )
+    assert summary["external_calls_used"] == 1
+    assert coordinator.used <= coordinator.max_calls
+    assert "external_budget_exceeded" in set(result["translation_error_code"].dropna())
