@@ -13,7 +13,7 @@ Los thresholds exploratorios por clase local son:
 ```text
 Negativo < 0.80
 Neutro   < 0.65
-Positivo < 0.60
+Positivo < 0.80
 ```
 
 El operador es estrictamente `<`. Estos valores fueron seleccionados y evaluados sobre el mismo benchmark manual de 60 casos: no son una calibración productiva. La configuración puede volver al baseline global de 0,80 mediante `ReviewRouterConfig` o desactivarse completamente con el feature flag.
@@ -42,7 +42,7 @@ La clasificación local siempre ocurre primero. Sólo el texto del comentario de
 
 ### Benchmark y rollback
 
-En el benchmark manual versionado, el router por clase deriva 43/60 casos, captura 26 de 29 errores y alcanza un 95% híbrido al reproducir los resultados externos observados. Es evidencia exploratoria, no una métrica de producción. Rollback: establecer `ENABLE_HYBRID_SENTIMENT=false`; no requiere cambiar modelo, artefactos, preprocessing ni columnas locales existentes.
+En el benchmark manual versionado, la variante Fase 2.3 deriva 50/60 casos, captura 28 de 29 errores y alcanza un 98,33% híbrido al reproducir los resultados externos observados. Elevar el threshold de `Positivo` de 0,60 a 0,80 recuperó dos errores negativos a cambio de siete revisiones adicionales; el caso neutral con confidence 0,811557 continúa fuera. Es evidencia exploratoria sobre el mismo benchmark, no una métrica de producción. Rollback: establecer `ENABLE_HYBRID_SENTIMENT=false` o configurar `HYBRID_THRESHOLD_POSITIVE=0.60`; no requiere cambiar modelo, artefactos ni preprocessing.
 
 La arquitectura preserva `predict_one()` y `predict_batch()`. Hubo validaciones reales controladas con Cerebras, pero el resultado híbrido sólo reemplaza la predicción visible cuando el feature flag experimental se habilita explícitamente; no es el default productivo.
 

@@ -60,15 +60,15 @@ def test_unknown_signal_and_invalid_threshold_are_rejected():
 
 @pytest.mark.parametrize(
     ("local_class", "threshold"),
-    [("Negativo", 0.80), ("Neutro", 0.65), ("Positivo", 0.60)],
+    [("Negativo", 0.80), ("Neutro", 0.65), ("Positivo", 0.80)],
 )
 def test_class_thresholds_use_strict_less_than(local_class, threshold):
     config = ReviewRouterConfig(
         confidence_threshold=None,
-        class_thresholds={"Negativo": 0.80, "Neutro": 0.65, "Positivo": 0.60},
+        class_thresholds={"Negativo": 0.80, "Neutro": 0.65, "Positivo": 0.80},
     )
     exact = PredictionObservability(local_class, threshold, "Neutro", 0.1, threshold - 0.1)
-    below = PredictionObservability(local_class, threshold - 0.001, "Neutro", 0.1, threshold - 0.101)
+    below = PredictionObservability(local_class, threshold - 0.0001, "Neutro", 0.1, threshold - 0.1001)
     assert not route_prediction(exact, config).should_review
     decision = route_prediction(below, config)
     assert decision.should_review

@@ -57,7 +57,7 @@ class HybridRoutingConfig:
     enabled: bool = False
     negative_threshold: float = 0.80
     neutral_threshold: float = 0.65
-    positive_threshold: float = 0.60
+    positive_threshold: float = 0.80
     max_reviews_per_batch: int = 25
     max_requests: int = 5
     window_seconds: float = 60.0
@@ -90,7 +90,7 @@ def load_hybrid_config(
         enabled=_boolean(_value("ENABLE_HYBRID_SENTIMENT", secrets, values)),
         negative_threshold=_float(_value("HYBRID_THRESHOLD_NEGATIVE", secrets, values), 0.80, "HYBRID_THRESHOLD_NEGATIVE"),
         neutral_threshold=_float(_value("HYBRID_THRESHOLD_NEUTRAL", secrets, values), 0.65, "HYBRID_THRESHOLD_NEUTRAL"),
-        positive_threshold=_float(_value("HYBRID_THRESHOLD_POSITIVE", secrets, values), 0.60, "HYBRID_THRESHOLD_POSITIVE"),
+        positive_threshold=_float(_value("HYBRID_THRESHOLD_POSITIVE", secrets, values), 0.80, "HYBRID_THRESHOLD_POSITIVE"),
         max_reviews_per_batch=_positive_int(_value("HYBRID_MAX_REVIEWS_PER_BATCH", secrets, values), 25, "HYBRID_MAX_REVIEWS_PER_BATCH"),
         max_requests=_positive_int(_value("HYBRID_MAX_REQUESTS", secrets, values), 5, "HYBRID_MAX_REQUESTS"),
         window_seconds=float(_value("HYBRID_WINDOW_SECONDS", secrets, values) or 60.0),

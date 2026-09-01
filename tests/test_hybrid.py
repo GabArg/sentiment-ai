@@ -112,8 +112,19 @@ def test_controlled_thresholds_reproduce_exploratory_router_benchmark(predictor)
         reviewed += decision.should_review
         errors += local_error
         captured += decision.should_review and local_error
-    assert reviewed == 43
+    assert reviewed == 50
     assert errors == 29
-    assert captured == 26
+    assert captured == 28
     # Evaluation-only upper bound using the previously observed perfect reviews.
-    assert (len(benchmark) - (errors - captured)) / len(benchmark) == pytest.approx(0.95)
+    assert (len(benchmark) - (errors - captured)) / len(benchmark) == pytest.approx(59 / 60)
+
+
+def test_positive_threshold_recovers_two_known_errors_but_not_case_above_80(predictor):
+    config = HybridRoutingConfig().router_config()
+    expected = {
+        "La calidad es terrible.": True,
+        "Estoy muy decepcionado con la compra.": True,
+        "La compra fue realizada el lunes.": False,
+    }
+    for text, should_review in expected.items():
+        assert route_prediction(predictor.observe_one(text), config).should_review is should_review

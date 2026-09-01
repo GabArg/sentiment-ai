@@ -42,7 +42,7 @@ La v2 no reentrena el modelo. Incluye un benchmark externo/manual reproducible d
 
 La confianza es la probabilidad interna asignada por el clasificador, no una garantía de acierto. Existen errores con confianza igual o superior a 80 %, por lo que ese valor no debe interpretarse como certeza ni como regla suficiente para una futura arquitectura híbrida. La metodología, observabilidad y discrepancia de preprocessing están documentadas en [docs/quality-evaluation.md](docs/quality-evaluation.md).
 
-La arquitectura híbrida de Fase 2.2 está disponible como preview experimental y **opt-in**. Permanece desactivada por defecto, por lo que la UI y los resultados siguen siendo locales salvo configuración explícita. Cuando se habilita, usa routing por clase, second check estructurado, fallback local, budget y pacing. En el benchmark manual versionado de 60 casos alcanzó 95% con 43 revisiones; no representa accuracy productiva. Véase [docs/hybrid-classification.md](docs/hybrid-classification.md).
+La arquitectura híbrida está disponible como preview experimental y **opt-in**. Permanece desactivada por defecto, por lo que la UI y los resultados siguen siendo locales salvo configuración explícita. Cuando se habilita, usa routing por clase, second check estructurado, fallback local, budget y pacing. La variante Fase 2.3 alcanzó 98,33% con 50 revisiones en el benchmark manual versionado de 60 casos; no representa accuracy productiva. Véase [docs/hybrid-classification.md](docs/hybrid-classification.md).
 
 ### Prueba multilingüe exploratoria
 
@@ -143,7 +143,7 @@ ENABLE_HYBRID_SENTIMENT = true
 CEREBRAS_API_KEY = "..."
 HYBRID_THRESHOLD_NEGATIVE = 0.80
 HYBRID_THRESHOLD_NEUTRAL = 0.65
-HYBRID_THRESHOLD_POSITIVE = 0.60
+HYBRID_THRESHOLD_POSITIVE = 0.80
 HYBRID_MAX_REVIEWS_PER_BATCH = 25
 ```
 
