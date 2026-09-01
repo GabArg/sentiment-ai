@@ -11,6 +11,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
 
 # IDE and operating system
 .vscode/
