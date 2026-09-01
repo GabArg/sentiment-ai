@@ -1,0 +1,21 @@
+case_id,text,language
+es_01,Muy buen servicio.,es
+es_02,Producto excelente.,es
+es_03,No funciona bien.,es
+es_04,Nunca llegó.,es
+es_05,Llegó el lunes.,es
+es_06,Pedido número dos.,es
+es_07,Nada mal.,es
+es_08,Soporte muy lento.,es
+en_01,Very good service.,en
+en_02,Never arrived.,en
+en_03,Order number two.,en
+en_04,Not bad.,en
+pt_01,Serviço muito bom.,pt
+pt_02,Nunca chegou.,pt
+pt_03,Pedido número dois.,pt
+pt_04,Nada mal.,pt
+it_01,Servizio molto buono.,it
+it_02,Non è arrivato.,it
+it_03,Ordine numero due.,it
+it_04,Niente male.,it
