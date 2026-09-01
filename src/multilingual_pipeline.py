@@ -105,6 +105,7 @@ def prepare_analysis_text(
         provider=result.provider,
         model=result.model,
         latency=result.latency_ms,
+        usage=result.usage,
     )
 
 
@@ -165,6 +166,7 @@ def _preparation(
     model: str | None = None,
     latency: float | None = None,
     error: str | None = None,
+    usage: dict[str, int] | None = None,
 ) -> MultilingualPreparationResult:
     return MultilingualPreparationResult(
         original_text=original,
@@ -179,4 +181,5 @@ def _preparation(
         translation_latency_ms=latency,
         translation_error_code=error,
         analysis_text=translated if state == "translated" and translated is not None else original,
+        translation_usage=usage,
     )

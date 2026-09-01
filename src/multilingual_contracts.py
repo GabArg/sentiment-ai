@@ -120,6 +120,7 @@ class MultilingualPreparationResult:
     translation_latency_ms: float | None
     translation_error_code: str | None
     analysis_text: str
+    translation_usage: dict[str, int] | None = None
 
     def __post_init__(self) -> None:
         if self.translation_state not in TRANSLATION_STATES:

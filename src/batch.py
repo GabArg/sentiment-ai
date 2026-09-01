@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.external_requests import ExternalRequestCoordinator
 from src.hybrid import evaluate_hybrid_observation, fallback_for_budget
 from src.hybrid_config import HybridRoutingConfig
+from src.multilingual_config import MultilingualConfig
+from src.multilingual_contracts import LanguageDetector, TranslationProvider
+from src.multilingual_pipeline import evaluate_multilingual_sentiment
 from src.model import PredictionObservability, SentimentPredictor
 from src.preprocessing import prepare_text_column
 from src.rate_pacer import RatePacer
@@ -114,6 +118,98 @@ def analyze_dataframe_hybrid(
         "disagreement": int((results["review_state"] == "disagreement").sum()),
         "fallback": int((results["review_state"] == "fallback_local").sum()),
         "estimated_cost_usd": allowed_total * config.estimated_review_cost_usd,
+    }
+    return results, dropped, summary
+
+
+def estimate_multilingual_translations(
+    frame: pd.DataFrame,
+    text_column: str,
+    detector: LanguageDetector,
+) -> tuple[int, int]:
+    """Detect locally how many valid rows request a supported translation."""
+    prepared, dropped = prepare_text_column(frame, text_column)
+    requested = 0
+    for text in prepared["text"]:
+        detection = detector.detect(text)
+        requested += bool(
+            detection.success
+            and detection.supported
+            and detection.detected_language in {"en", "pt", "it"}
+        )
+    return requested, dropped
+
+
+def analyze_dataframe_multilingual(
+    frame: pd.DataFrame,
+    text_column: str,
+    predictor: SentimentPredictor,
+    detector: LanguageDetector,
+    translation_provider: TranslationProvider,
+    multilingual_config: MultilingualConfig,
+    hybrid_config: HybridRoutingConfig,
+    review_provider: SentimentReviewProvider | None,
+    coordinator: ExternalRequestCoordinator,
+    on_progress=None,
+) -> tuple[pd.DataFrame, int, dict[str, int]]:
+    """Sequential multilingual batch using one global request coordinator."""
+    prepared, dropped = prepare_text_column(frame, text_column)
+    clean = frame[text_column].fillna("").astype(str).str.strip()
+    original_rows = frame.loc[clean.str.len() >= 2].reset_index(drop=True)
+    records = []
+    for index, (original_row, text) in enumerate(
+        zip(original_rows.to_dict("records"), prepared["text"]), start=1
+    ):
+        if on_progress is not None:
+            on_progress(index, len(prepared))
+        result = evaluate_multilingual_sentiment(
+            text,
+            predictor,
+            multilingual_config.enabled,
+            detector,
+            translation_provider,
+            hybrid_config,
+            review_provider,
+            coordinator,
+        )
+        local = predictor.predict_one(result.preparation.analysis_text)
+        row = dict(original_row)
+        row["text"] = text
+        row["sentiment"] = result.final_sentiment
+        row["confidence"] = local.confidence
+        for label, probability in local.probabilities.items():
+            row[f"probability_{label.casefold()}"] = probability
+        row["local_sentiment"] = result.sentiment.local_prediction
+        row["local_confidence"] = result.sentiment.local_confidence
+        row["review_requested"] = result.sentiment.review_requested
+        row["review_reasons"] = "|".join(result.sentiment.review_reasons)
+        row["review_state"] = result.sentiment.review_state
+        row["review_sentiment"] = result.sentiment.review_prediction
+        row["review_provider"] = result.sentiment.review_provider
+        row["review_model"] = result.sentiment.review_model
+        row["review_latency_ms"] = result.sentiment.review_latency_ms
+        row["fallback_used"] = result.sentiment.fallback_used
+        row["review_error_code"] = result.sentiment.error_code
+        row["detected_language"] = result.preparation.detected_language
+        row["language_supported"] = result.preparation.language_supported
+        row["translation_requested"] = result.preparation.translation_requested
+        row["translation_state"] = result.preparation.translation_state
+        row["translation_provider"] = result.preparation.translation_provider
+        row["translation_model"] = result.preparation.translation_model
+        row["translation_latency_ms"] = result.preparation.translation_latency_ms
+        row["translation_error_code"] = result.preparation.translation_error_code
+        records.append(row)
+    results = pd.DataFrame.from_records(records)
+    summary = {
+        "external_calls_used": coordinator.used,
+        "translations_attempted": int(coordinator.calls["translation"]),
+        "reviews_attempted": int(coordinator.calls["sentiment_review"]),
+        "external_call_limit": coordinator.max_calls,
+        "translation_fallbacks": int((results["translation_state"] == "fallback_original").sum()),
+        "local_only": int((results["review_state"] == "local_only").sum()),
+        "reviewed": int((results["review_state"] == "reviewed").sum()),
+        "disagreement": int((results["review_state"] == "disagreement").sum()),
+        "fallback": int((results["review_state"] == "fallback_local").sum()),
     }
     return results, dropped, summary
 
