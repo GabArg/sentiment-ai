@@ -32,6 +32,8 @@ El resultado estructurado conserva predicción/confianza/margen local, reasons, 
 
 El modo individual construye el proveedor con `max_retries=0` para evitar esperas opacas causadas por retries internos. Un error produce fallback local y una advertencia segura, sin traceback.
 
+La presentación distingue explícitamente tres capas: `Resultado final`, `Confianza del modelo local` y `Probabilidades del modelo local`. Cuando existe second check, la UI indica si confirmó o modificó la clasificación inicial, sin inventar probabilidades híbridas ni mostrar la confidence declarada por Cerebras como certeza. Los estados técnicos se traducen a labels humanos; permanecen sin cambios en el CSV para trazabilidad.
+
 El batch es secuencial, usa `max_retries=1` como máximo y aplica pacing desacoplado: cinco requests por ventana de 60 segundos, con reloj y sleeper inyectables para tests. La UI muestra progreso y espera de ventana. El límite inicial es `HYBRID_MAX_REVIEWS_PER_BATCH=25`; los candidatos restantes se marcan `fallback_local` con `review_budget_exceeded`.
 
 Antes de ejecutar el batch se muestran cantidad prevista y costo orientativo usando USD 0,000178 por review, observado en una validación puntual. El costo real depende de tokens, modelo y precios.

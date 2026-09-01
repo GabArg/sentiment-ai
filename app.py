@@ -32,6 +32,12 @@ from src.sentiment_review import CerebrasSentimentReviewProvider
 
 MAX_TEXT_LENGTH = 5_000
 SENTIMENT_COLORS = {"Negativo": "#D92D20", "Neutro": "#475467", "Positivo": "#078A61"}
+REVIEW_STATE_LABELS = {
+    "local_only": "Modelo local",
+    "reviewed": "Validado por second check",
+    "disagreement": "Corregido por second check",
+    "fallback_local": "Fallback local",
+}
 
 st.set_page_config(
     page_title="Sentiment AI v2 | Customer Feedback Analytics",
@@ -103,9 +109,15 @@ def render_individual() -> None:
             return
         left, right = st.columns([1, 2])
         with left:
-            st.metric("Sentimiento", prediction.label)
-            st.metric("Confianza", f"{prediction.confidence:.1%}")
+            st.metric("Resultado final", prediction.label)
+            st.metric(
+                "Confianza del modelo local",
+                f"{prediction.confidence:.1%}",
+                help="Estimación interna del clasificador local. No representa una garantía de corrección.",
+            )
+            st.caption("Origen: Modelo local")
         with right:
+            st.subheader("Probabilidades del modelo local")
             chart_data = sentiment_probability_frame(prediction.probabilities)
             figure = px.bar(
                 chart_data,
@@ -119,8 +131,8 @@ def render_individual() -> None:
             )
             figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
             figure.update_xaxes(tickformat=".0%", range=[0, 1])
-            st.plotly_chart(figure, use_container_width=True)
-        st.caption("La confianza es una estimación interna del modelo, no una garantía de corrección.")
+            st.plotly_chart(figure, width="stretch")
+        st.caption("La confianza mostrada es una estimación interna del modelo local, no una garantía de corrección.")
 
 
 def render_batch() -> None:
@@ -200,11 +212,23 @@ def render_individual_controlled() -> None:
         return
     left, right = st.columns([1, 2])
     with left:
-        st.metric("Sentimiento", result.final_prediction)
-        st.metric("Confianza", f"{prediction.confidence:.1%}")
-        origin = "Revisión híbrida" if result.review_state in {"reviewed", "disagreement"} else "Modelo local"
+        st.metric("Resultado final", result.final_prediction)
+        st.metric(
+            "Confianza del modelo local",
+            f"{prediction.confidence:.1%}",
+            help="Estimación interna del clasificador local. No representa la confianza del resultado híbrido.",
+        )
+        if result.review_state in {"reviewed", "disagreement"}:
+            origin = "Revisión híbrida"
+        elif result.review_state == "fallback_local":
+            origin = "Fallback local"
+        else:
+            origin = "Modelo local"
         st.caption(f"Origen: {origin}")
+        st.markdown(f"**Estado:** {REVIEW_STATE_LABELS[result.review_state]}")
     with right:
+        st.subheader("Probabilidades del modelo local")
+        st.caption("Distribución previa al second check")
         chart_data = sentiment_probability_frame(prediction.probabilities)
         figure = px.bar(
             chart_data,
@@ -218,20 +242,26 @@ def render_individual_controlled() -> None:
         )
         figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
         figure.update_xaxes(tickformat=".0%", range=[0, 1])
-        st.plotly_chart(figure, use_container_width=True)
-    st.caption("La confianza mostrada pertenece al modelo local y no es una garantía de corrección.")
+        st.plotly_chart(figure, width="stretch")
+    st.caption("La confianza mostrada es una estimación interna del modelo local; no representa confianza del resultado híbrido.")
+    if result.review_state == "disagreement":
+        st.info("El second check modificó la clasificación inicial.")
+    elif result.review_state == "reviewed":
+        st.success("El second check confirmó la clasificación local.")
+    elif result.review_state == "fallback_local":
+        st.warning("La revisión externa no estuvo disponible; se conserva la clasificación local.")
     with st.expander("Detalle de revisión"):
         st.write(f"Predicción local: **{result.local_prediction}**")
         st.write(f"Confianza local: **{result.local_confidence:.1%}**")
-        st.write(f"Estado: **{result.review_state}**")
-        if result.review_reasons:
-            st.write(f"Motivo: `{', '.join(result.review_reasons)}`")
+        if result.review_state == "local_only":
+            st.write("Este caso no alcanzó los criterios de revisión externa.")
+        elif result.review_reasons:
+            st.write("Motivo de revisión: **baja confianza local**")
+            st.caption(f"Regla técnica: {', '.join(result.review_reasons)}")
         if result.review_prediction:
             st.write(f"Second check: **{result.review_prediction}**")
         if result.review_latency_ms is not None:
             st.write(f"Latencia externa: **{result.review_latency_ms:.0f} ms**")
-    if result.fallback_used:
-        st.warning("Se utilizó la predicción local porque la revisión externa no estuvo disponible.")
 
 
 def render_batch_controlled() -> None:
@@ -298,18 +328,23 @@ def render_batch_controlled() -> None:
     if results is not None:
         st.subheader("Resultados procesados")
         display = results.copy()
+        if "review_state" in display:
+            display["review_state"] = display["review_state"].map(REVIEW_STATE_LABELS).fillna("Estado desconocido")
         percentage_columns = [name for name in display if name.startswith("probability_")]
         for name in ["confidence", "local_confidence"]:
             if name in display:
                 display[name] = display[name].map(lambda value: f"{value:.1%}")
         for name in percentage_columns:
             display[name] = display[name].map(lambda value: f"{value:.1%}")
+        display = display.rename(columns={"review_state": "Estado de revisión"})
         st.dataframe(display.head(100), width="stretch", hide_index=True)
         summary = st.session_state.get("hybrid_summary")
         if isinstance(summary, dict):
             st.caption(
-                f"Trazabilidad: local_only {summary['local_only']:,} · reviewed {summary['reviewed']:,} · "
-                f"disagreement {summary['disagreement']:,} · fallback {summary['fallback']:,}"
+                f"Trazabilidad: Modelo local {summary['local_only']:,} · "
+                f"Confirmados por second check {summary['reviewed']:,} · "
+                f"Corregidos por second check {summary['disagreement']:,} · "
+                f"Fallback local {summary['fallback']:,}"
             )
         st.download_button(
             "Descargar CSV procesado",
@@ -330,7 +365,19 @@ def render_dashboard() -> None:
     render_metric_cards(metrics)
     if "review_state" in results.columns:
         states = results["review_state"].value_counts(normalize=True).mul(100)
-        st.caption("Trazabilidad híbrida: " + " · ".join(f"{state} {value:.1f}%" for state, value in states.items()))
+        dashboard_labels = {
+            "local_only": "Modelo local",
+            "reviewed": "Confirmados por second check",
+            "disagreement": "Corregidos por second check",
+            "fallback_local": "Fallback local",
+        }
+        st.caption(
+            "Trazabilidad híbrida: "
+            + " · ".join(
+                f"{dashboard_labels.get(state, 'Estado desconocido')} {value:.1f}%"
+                for state, value in states.items()
+            )
+        )
     distribution = sentiment_distribution(metrics)
     left, right = st.columns(2)
     with left:
@@ -345,7 +392,7 @@ def render_dashboard() -> None:
             title="Distribución de sentimientos",
         )
         figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
-        st.plotly_chart(figure, use_container_width=True)
+        st.plotly_chart(figure, width="stretch")
     with right:
         confidence = results.groupby("sentiment", as_index=False)["confidence"].mean()
         figure = px.bar(
@@ -360,7 +407,7 @@ def render_dashboard() -> None:
         )
         figure.update_yaxes(tickformat=".0%", range=[0, 1])
         figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
-        st.plotly_chart(figure, use_container_width=True)
+        st.plotly_chart(figure, width="stretch")
 
     st.subheader("Visión de negocio")
     negative_pct = metrics["percentages"]["Negativo"]
@@ -403,7 +450,7 @@ def render_pareto() -> None:
     figure.update_yaxes(title_text="Frecuencia", secondary_y=False)
     figure.update_yaxes(title_text="Porcentaje acumulado", range=[0, 105], ticksuffix="%", secondary_y=True)
     figure.update_layout(height=520, margin=dict(l=0, r=0, t=30, b=0), xaxis_tickangle=-35)
-    st.plotly_chart(figure, use_container_width=True)
+    st.plotly_chart(figure, width="stretch")
 
 
 def _streamlit_cerebras_key() -> str | None:
