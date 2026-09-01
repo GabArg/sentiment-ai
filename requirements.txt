@@ -5,3 +5,4 @@ numpy>=1.26,<2.5
 pandas>=2.2,<4
 plotly>=5.24,<7
 cerebras_cloud_sdk>=1.46,<2
+langdetect==1.0.9
