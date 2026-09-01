@@ -51,6 +51,7 @@ class StructuredReviewResult:
     latency_ms: float = 0.0
     parse_status: str = "not_parsed"
     schema_valid: bool = False
+    retry_after: str | None = None
 
 
 class StructuredMultilingualSentimentReviewer:
@@ -98,7 +99,9 @@ class StructuredMultilingualSentimentReviewer:
         except Exception as exc:
             status = getattr(exc, "status_code", None)
             code = "rate_limited" if status == 429 else "timeout" if type(exc).__name__ in {"APITimeoutError", "TimeoutError"} else "provider_error"
-            return StructuredReviewResult(False, error_code=code, latency_ms=(perf_counter() - started) * 1000)
+            headers = getattr(getattr(exc, "response", None), "headers", None)
+            retry_after = headers.get("retry-after") if headers is not None else None
+            return StructuredReviewResult(False, error_code=code, latency_ms=(perf_counter() - started) * 1000, retry_after=retry_after)
 
 
 def _validate(payload: Any, variant: str) -> str | None:
