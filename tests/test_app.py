@@ -1,9 +1,28 @@
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
 from src.sentiment_review import CerebrasSentimentReviewProvider, ReviewResult
+
+
+def test_all_plotly_charts_use_supported_streamlit_150_arguments():
+    tree = ast.parse((Path(__file__).parents[1] / "app.py").read_text(encoding="utf-8"))
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "plotly_chart"
+    ]
+    assert len(calls) == 5
+    for call in calls:
+        keywords = {keyword.arg for keyword in call.keywords}
+        assert "width" not in keywords
+        assert keywords == {"use_container_width"}
 
 
 def _mock_review(sentiment, *, success=True, error_code=None):
@@ -44,6 +63,8 @@ def test_app_starts_and_individual_analysis_works():
     assert any(item.label == "Confianza del modelo local" for item in app.metric)
     assert any(item.value == "Probabilidades del modelo local" for item in app.subheader)
     assert any("Origen: Modelo local" in item.value for item in app.caption)
+    assert len(app.get("plotly_chart")) == 1
+    assert not any("keyword arguments have been deprecated" in item.value for item in app.warning)
 
 
 def test_batch_page_can_be_opened_without_data():
