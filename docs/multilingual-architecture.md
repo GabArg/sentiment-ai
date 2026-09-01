@@ -1,6 +1,6 @@
 # Arquitectura multilenguaje controlada (Fase 3.0A)
 
-La Fase 3.0B implementa el núcleo detrás de `ENABLE_MULTILINGUAL_SENTIMENT`, que permanece `false` por defecto. La capa todavía no está conectada a la UX/batch de preview y no se hicieron llamadas externas reales.
+Las Fases 3.0B/3.0C implementan el núcleo y su integración UX/batch detrás de `ENABLE_MULTILINGUAL_SENTIMENT`, que permanece `false` por defecto. La validación real se limitó a seis traducciones controladas.
 
 ## Alcance y decisión del detector
 
@@ -97,4 +97,4 @@ Una llamada combinada futura podría devolver traducción y sentimiento para tex
 - Sobreajuste al fixture pequeño; no representa calidad productiva.
 - `langdetect` tiene mantenimiento limitado; la dependencia debe quedar detrás de interfaz.
 
-3.0B implementó detector, feature flag OFF, provider estructurado, pipeline y coordinador/presupuesto con mocks. 3.0C conectará UX y batch, agregará AppTest de presentación y, sólo después, la prueba real de hasta 6 traducciones. El histórico se toma como intención arquitectónica (traducción Cerebras/Llama 3 y revisión por incertidumbre), no como código reproducido literalmente; el diseño moderno usa gpt-oss-120b, separación de providers, feature flags, privacidad y observabilidad.
+3.0B implementó detector, feature flag OFF, provider estructurado, pipeline y coordinador/presupuesto con mocks. 3.0C conectó UX y batch, agregó AppTest de presentación y ejecutó seis traducciones reales después del gate de QA. El histórico se toma como intención arquitectónica (traducción Cerebras/Llama 3 y revisión por incertidumbre), no como código reproducido literalmente; el diseño moderno usa gpt-oss-120b, separación de providers, feature flags, privacidad y observabilidad.

@@ -44,6 +44,8 @@ La confianza es la probabilidad interna asignada por el clasificador, no una gar
 
 La arquitectura híbrida está disponible como preview experimental y **opt-in**. Permanece desactivada por defecto, por lo que la UI y los resultados siguen siendo locales salvo configuración explícita. Cuando se habilita, usa routing por clase, second check estructurado, fallback local, budget y pacing. La variante Fase 2.3 alcanzó 98,33% con 50 revisiones en el benchmark manual versionado de 60 casos; no representa accuracy productiva. Véase [docs/hybrid-classification.md](docs/hybrid-classification.md).
 
+El modo multilenguaje experimental también es **opt-in** e independiente. Detecta localmente español, inglés, portugués e italiano y puede traducir a español mediante Cerebras `gpt-oss-120b`; preserva el original y sólo envía el comentario anonimizado, nunca otras columnas. El detector obtuvo 95,83% en 48 frases, pero fue menos fiable en español corto (83,33%). Una validación real limitada a seis traducciones preservó la semántica, aunque traducción→modelo local no mejoró la accuracy en esa muestra. No representa calidad productiva. Véanse [la arquitectura](docs/multilingual-architecture.md) y [la validación](docs/multilingual-validation.md).
+
 ### Prueba multilingüe exploratoria
 
 | Idioma | Positivo | Negativo | Neutro |
@@ -86,6 +88,10 @@ src/sentiment_review.py        contrato y adaptador de second check
 src/hybrid.py                  consolidación local/híbrida estructurada y reversible
 src/hybrid_config.py           feature flag, thresholds, budget y costo orientativo
 src/rate_pacer.py              pacing secuencial inyectable para batch
+src/language_detection.py      detector local determinístico
+src/translation.py             provider estructurado de traducción
+src/multilingual_pipeline.py   preparación y clasificación multilenguaje
+src/external_requests.py       pacing y budget compartidos
 src/router_evaluation.py       evaluación offline de estrategias
 models/                        artefactos joblib originales
 tests/                         pruebas unitarias y funcionales
@@ -148,6 +154,16 @@ HYBRID_MAX_REVIEWS_PER_BATCH = 25
 ```
 
 No habilites el flag únicamente por configurar la API key: son opciones independientes. Los thresholds son experimentales y reversibles; desactivar el flag restaura el comportamiento local sin cambiar artefactos.
+
+Para habilitar manualmente el preview multilenguaje:
+
+```toml
+ENABLE_MULTILINGUAL_SENTIMENT = true
+CEREBRAS_API_KEY = "..."
+HYBRID_MAX_EXTERNAL_CALLS_PER_BATCH = 25
+```
+
+La detección puede ser menos fiable en textos breves o ambiguos. Habilitar multilenguaje no activa automáticamente el second check híbrido.
 
 ## Evolución y atribución
 
