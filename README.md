@@ -1,18 +1,65 @@
 # Sentiment AI
 
-Dashboard de customer feedback que combina clasificación local, análisis masivo, métricas de negocio y revisiones IA opcionales. La aplicación funciona local-only por defecto; Cerebras se activa únicamente mediante flags o acciones explícitas.
+Sentiment AI es un dashboard de customer feedback que combina clasificación local, análisis masivo, métricas de negocio y revisiones de IA opcionales. La aplicación funciona en modo local por defecto; los servicios externos sólo se activan mediante flags o acciones explícitas.
 
-> Evolución moderna del proyecto grupal H12-25-L-Equipo-72. La procedencia y las contribuciones verificables están separadas en [ATTRIBUTION.md](ATTRIBUTION.md).
+## Demo / qué resuelve
 
-## Funcionalidades
+La aplicación transforma comentarios individuales o archivos CSV en información útil para explorar la experiencia del cliente:
 
-- análisis individual con resultado, evidencia local y origen trazable;
-- CSV de hasta 10.000 filas, preservación de orden y export UTF-8;
-- dashboard de distribución, confianza, temas negativos y Pareto 80/20;
-- informe ejecutivo determinístico y segunda redacción IA opcional;
-- hybrid second check configurable con fallback local;
-- review multilingüe directo experimental para ES/EN/PT/IT;
-- anonimización, budget global y rolling-window pacing compartido.
+- clasifica sentimientos con resultado y origen trazables;
+- procesa hasta 10.000 filas conservando el orden y permite exportarlas en UTF-8;
+- presenta distribución, confianza local y métricas de negocio;
+- identifica temas negativos y construye un Pareto 80/20;
+- genera un informe ejecutivo determinístico y, opcionalmente, una redacción asistida por IA.
+
+## Origen del proyecto
+
+Sentiment AI nació como **H12-25-L-Equipo-72**, un proyecto colaborativo de No Country. Los integrantes que participaron activamente en el proyecto fueron:
+
+- Carlos Mauricio Rondón
+- Juan Carlos Vanegas Molina
+- Guido Arturo Broccoli
+- Neldy Rolando Velásquez Samolo
+- José Julián Gómez Brizuela
+
+El modelo original, sus artefactos y las primeras implementaciones surgieron del trabajo grupal. El proyecto histórico incluyó una arquitectura con FastAPI/OCI, frontend web, análisis de sentimiento y capacidades documentadas de traducción y revisión con Cerebras. No se presenta ese trabajo como creación exclusiva de una sola persona.
+
+La procedencia técnica, los repositorios históricos y el alcance de las contribuciones están documentados en [ATTRIBUTION.md](ATTRIBUTION.md).
+
+## Evolución para portfolio
+
+A partir de esa base histórica, retomé el proyecto, recuperé una versión reproducible del modelo y desarrollé una evolución técnica orientada a portfolio, analítica de negocio, confiabilidad y uso responsable de IA.
+
+Esta evolución posterior incorporó:
+
+- recuperación reproducible de los artefactos TF-IDF + LogisticRegression;
+- inferencia local y arquitectura modular;
+- análisis individual y procesamiento batch de archivos CSV;
+- dashboard de analytics y métricas de negocio;
+- extracción de temas negativos y Pareto 80/20;
+- informe ejecutivo determinístico y redacción IA opcional;
+- revisión híbrida opt-in para casos derivados por un router auditable;
+- evaluación del modelo local y benchmark manual versionado;
+- arquitectura multilingüe experimental;
+- direct structured review para ES/EN/PT/IT mediante Structured Outputs y JSON Schema;
+- anonimización, minimización de datos y fallback observable;
+- límites de presupuesto, control de rate limits y pacing compartido;
+- tests automatizados, GitHub Actions CI y documentación técnica;
+- preparación y publicación de la release candidate `v2.0.0-rc1`.
+
+El soporte multilingüe sigue siendo experimental: fue validado sobre muestras pequeñas y curadas, no como una capacidad productiva general.
+
+## Resultados y validación
+
+| Evaluación | Resultado | Alcance |
+|---|---:|---|
+| holdout histórico reconstruido | ~89.42% | corpus histórico; no reentrenado en v2 |
+| baseline local manual | 31/60, 51.67% | benchmark dirigido externo; neutral débil |
+| hybrid manual | 59/60, 98.33% | mismo benchmark pequeño; Cerebras sólo en derivados |
+| multilingüe directo | 47/48, 97.92% | muestra curada ES/EN/PT/IT; no benchmark general |
+| pacing endurecido | 15/15 success, 0 HTTP 429 | prueba operativa separada; no mide accuracy |
+
+Estas métricas corresponden a evaluaciones distintas, no son intercambiables y no representan rendimiento productivo. Los experimentos completos están indexados en [docs/experiments/README.md](docs/experiments/README.md).
 
 ## Arquitectura
 
@@ -26,23 +73,22 @@ texto / CSV → validación
 resultados → dashboard → temas/Pareto → informe → exports
 ```
 
-La ruta recomendada para no-español es una sola llamada estructurada sobre el comentario anonimizado. La traducción previa a español permanece disponible como ruta legacy/experimental por fidelidad histórica. Detalle: [arquitectura](docs/architecture.md), [ADR 001](docs/adr/001-direct-multilingual-review.md).
+La ruta recomendada para textos no españoles es una sola llamada estructurada sobre el comentario anonimizado. La traducción previa a español permanece disponible como ruta legacy/experimental por fidelidad histórica. Más detalles: [arquitectura](docs/architecture.md) y [ADR 001](docs/adr/001-direct-multilingual-review.md).
 
 ## Privacidad
 
-Los flags están OFF por defecto. Cuando hay revisión o traducción externa se envía sólo el comentario anonimizado, sin expected, confianza local, fila completa ni columnas de negocio. El informe IA recibe únicamente agregados minimizados. La anonimización reduce riesgo pero no garantiza desidentificación de nombres o contexto libre. Véase [docs/privacy.md](docs/privacy.md).
+Los flags están OFF por defecto. Cuando hay revisión o traducción externa se envía sólo el comentario anonimizado, sin expected, confianza local, fila completa ni columnas de negocio. El informe IA recibe únicamente agregados minimizados. La anonimización reduce el riesgo, pero no garantiza la desidentificación de nombres o contexto libre. Véase [docs/privacy.md](docs/privacy.md).
 
-## Validación
+## Calidad de ingeniería
 
-| Evaluación | Resultado | Alcance |
-|---|---:|---|
-| holdout histórico reconstruido | ~89.42% | corpus histórico; no reentrenado en v2 |
-| baseline local manual | 31/60, 51.67% | benchmark dirigido externo; neutral débil |
-| hybrid manual | 59/60, 98.33% | mismo benchmark pequeño; Cerebras sólo en derivados |
-| multilingüe directo | 47/48, 97.92% | muestra curada ES/EN/PT/IT; no benchmark general |
-| pacing endurecido | 15/15 success, 0 HTTP 429 | prueba operativa separada; no mide accuracy |
-
-Estas métricas no son intercambiables ni representan producción. Los experimentos completos están indexados en [docs/experiments/README.md](docs/experiments/README.md).
+- 214 tests automatizados;
+- 90% de cobertura sobre `src`;
+- GitHub Actions CI para pull requests y `main`;
+- validaciones con `compileall` y `pip check`;
+- fallbacks explícitos ante errores externos;
+- separación entre inferencia local y servicios externos;
+- flags externos OFF por defecto;
+- trazabilidad de rutas, budgets y estados de revisión.
 
 ## Instalación
 
@@ -78,7 +124,7 @@ HYBRID_WINDOW_SECONDS = 60
 EXTERNAL_RATE_LIMIT_SAFETY_SECONDS = 2.0
 ```
 
-Configurar la API key no activa ningún modo. El informe IA se genera sólo al pulsar su botón. Tabla completa de precedencia y aliases: [docs/architecture.md](docs/architecture.md).
+Configurar la API key no activa ningún modo. El informe IA se genera sólo al pulsar su botón. La tabla completa de precedencia y aliases está en [docs/architecture.md](docs/architecture.md).
 
 ## Testing
 
@@ -89,21 +135,17 @@ python -m compileall app.py src scripts tests
 python -m pip check
 ```
 
-La release candidate mantiene cobertura `src` ≥90% y AppTests de los flujos local, hybrid, traducción legacy, direct, batch, dashboard e informes.
-
 ## Limitaciones
 
 - El modelo local fue entrenado históricamente y falla especialmente en neutrales fuera de dominio.
 - El benchmark multilingüe es pequeño, manual y limitado a ES/EN/PT/IT.
-- Textos breves no usan detección de idioma; se marcan inciertos.
+- Los textos breves no usan detección de idioma; se marcan como inciertos.
 - Los modos externos dependen de disponibilidad, cuota, costo y límites de Cerebras.
 - El Free Tier configurado para la demo usa pacing conservador y puede hacer lento un batch.
 - Los temas negativos son señales léxicas, no causas de negocio inferidas.
 
 ## Historia y créditos
 
-1. Proyecto grupal original H12-25-L-Equipo-72: FastAPI/OCI, frontend PHP/JavaScript/ChartJS, modelo y flujo histórico con Llama 3/Cerebras.
-2. Recuperación V6: adaptación de artefactos TF-IDF + LogisticRegression a una demo independiente.
-3. v2: dashboard modular, analytics, hybrid estructurado, multilenguaje directo, privacidad, observabilidad y suite de tests.
+Sentiment AI tiene dos etapas claramente diferenciadas: el proyecto grupal original de No Country y la recuperación/evolución v2 desarrollada posteriormente en este repositorio. La autoría de ambas etapas se documenta por separado para preservar correctamente la procedencia del trabajo.
 
-No se atribuye a Guido código histórico sin evidencia. Véanse [ATTRIBUTION.md](ATTRIBUTION.md) y [LICENSE](LICENSE) (GPL-3.0).
+Los créditos completos, las fuentes históricas y el detalle de la evolución están en [ATTRIBUTION.md](ATTRIBUTION.md). El proyecto se distribuye bajo [GPL-3.0](LICENSE).
