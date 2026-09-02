@@ -1,0 +1,49 @@
+case_id,expected_language,expected_sentiment,text,short_text,difficulty
+en-pos-01,en,Positivo,The support agent was patient and solved my billing issue completely.,false,clear
+en-pos-02,en,Positivo,Delivery was quick and the product works perfectly.,false,clear
+en-pos-03,en,Positivo,I really appreciate how kindly customer service handled my request.,false,clear
+en-neg-01,en,Negativo,The package arrived damaged and nobody answered my complaint.,false,clear
+en-neg-02,en,Negativo,I was charged twice and the refund still has not arrived.,false,clear
+en-neg-03,en,Negativo,The device stopped working after one day and support was useless.,false,clear
+en-neu-01,en,Neutro,The order was delivered on March fifteenth at four in the afternoon.,false,factual_neutral
+en-neu-02,en,Neutro,The invoice contains three products and a shipping charge.,false,factual_neutral
+en-neu-03,en,Neutro,Customer service registered the ticket under reference number forty two.,false,factual_neutral
+en-hard-01,en,Positivo,The service was not bad at all and I would use it again.,false,negation
+en-hard-02,en,Negativo,The box looked great but the product inside was completely broken.,false,contrast
+en-hard-03,en,Neutro,The delivery did not arrive late; it came at the scheduled time.,false,negation
+pt-pos-01,pt,Positivo,O suporte foi atencioso e resolveu meu problema de cobrança rapidamente.,false,clear
+pt-pos-02,pt,Positivo,A entrega foi rápida e o produto funciona perfeitamente.,false,clear
+pt-pos-03,pt,Positivo,Fiquei muito satisfeito com a forma como trataram meu pedido.,false,clear
+pt-neg-01,pt,Negativo,O pacote chegou danificado e ninguém respondeu à minha reclamação.,false,clear
+pt-neg-02,pt,Negativo,Cobraram duas vezes e o reembolso ainda não chegou.,false,clear
+pt-neg-03,pt,Negativo,O aparelho parou de funcionar no primeiro dia e o suporte foi péssimo.,false,clear
+pt-neu-01,pt,Neutro,O pedido foi entregue no dia quinze de março às quatro da tarde.,false,factual_neutral
+pt-neu-02,pt,Neutro,A fatura contém três produtos e uma taxa de envio.,false,factual_neutral
+pt-neu-03,pt,Neutro,O atendimento registrou o chamado com o número quarenta e dois.,false,factual_neutral
+pt-hard-01,pt,Positivo,O atendimento não foi nada ruim e eu compraria novamente.,false,negation
+pt-hard-02,pt,Negativo,A embalagem era bonita mas o produto dentro estava completamente quebrado.,false,contrast
+pt-hard-03,pt,Neutro,A entrega não chegou atrasada; veio no horário previsto.,false,negation
+it-pos-01,it,Positivo,L'assistenza è stata gentile e ha risolto rapidamente il problema di fatturazione.,false,clear
+it-pos-02,it,Positivo,La consegna è stata veloce e il prodotto funziona perfettamente.,false,clear
+it-pos-03,it,Positivo,Sono molto soddisfatto di come hanno gestito la mia richiesta.,false,clear
+it-neg-01,it,Negativo,Il pacco è arrivato danneggiato e nessuno ha risposto al reclamo.,false,clear
+it-neg-02,it,Negativo,Mi hanno addebitato due volte e il rimborso non è ancora arrivato.,false,clear
+it-neg-03,it,Negativo,Il dispositivo ha smesso di funzionare dopo un giorno e il supporto è stato inutile.,false,clear
+it-neu-01,it,Neutro,L'ordine è stato consegnato il quindici marzo alle quattro del pomeriggio.,false,factual_neutral
+it-neu-02,it,Neutro,La fattura contiene tre prodotti e una spesa di spedizione.,false,factual_neutral
+it-neu-03,it,Neutro,L'assistenza ha registrato la richiesta con il numero quarantadue.,false,factual_neutral
+it-hard-01,it,Positivo,Il servizio non è stato affatto male e lo userei di nuovo.,false,negation
+it-hard-02,it,Negativo,La confezione era bella ma il prodotto dentro era completamente rotto.,false,contrast
+it-hard-03,it,Neutro,La consegna non è arrivata tardi; è giunta all'orario previsto.,false,negation
+short-es-pos,es,Positivo,Muy buen servicio.,true,short_text
+short-es-neg,es,Negativo,No vuelvo jamás.,true,short_text
+short-es-neu,es,Neutro,Pedido recibido hoy.,true,short_text
+short-en-pos,en,Positivo,Really helpful support.,true,short_text
+short-en-neg,en,Negativo,Never buying again.,true,short_text
+short-en-neu,en,Neutro,Three items included.,true,short_text
+short-pt-pos,pt,Positivo,Muito bom atendimento.,true,short_text
+short-pt-neg,pt,Negativo,Nunca mais compro.,true,short_text
+short-pt-neu,pt,Neutro,Pedido recebido hoje.,true,short_text
+short-it-pos,it,Positivo,Servizio davvero ottimo.,true,short_text
+short-it-neg,it,Negativo,Non compro più.,true,short_text
+short-it-neu,it,Neutro,Ordine ricevuto oggi.,true,short_text
