@@ -174,6 +174,44 @@ def load_global_styles() -> None:
             padding: .15rem .5rem;
             border-radius: 6px;
         }
+
+        /* Sentiment Badges & Result Presentation */
+        .sentiment-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.28rem 0.8rem;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 750;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .badge-positive {
+            background: #ECFDF3;
+            color: var(--positive);
+            border: 1px solid #A6F4C5;
+        }
+        .badge-negative {
+            background: #FEF3F2;
+            color: var(--negative);
+            border: 1px solid #FECDCA;
+        }
+        .badge-neutral {
+            background: #F8FAFC;
+            color: var(--neutral);
+            border: 1px solid #E2E8F0;
+        }
+        .origin-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.22rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 650;
+            background: var(--accent-soft);
+            color: var(--accent);
+            border: 1px solid rgba(79, 70, 229, 0.15);
+        }
         </style>
         """,
         unsafe_allow_html=True,

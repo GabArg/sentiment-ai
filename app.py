@@ -136,11 +136,12 @@ def render_metric_cards(metrics: dict[str, object]) -> None:
 def render_individual() -> None:
     st.header("Análisis individual")
     st.write("Clasificá una opinión con el modelo local y revisá la probabilidad de cada clase aprendida.")
+    st.caption("Procesamiento local-first: inferencia determinística en la sesión con modelo empaquetado.")
     with st.form("individual_form"):
         text = st.text_area(
             "Comentario",
             max_chars=MAX_TEXT_LENGTH,
-            height=180,
+            height=160,
             placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
         )
         submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
@@ -153,7 +154,7 @@ def render_individual() -> None:
         except Exception:
             st.error("No fue posible analizar el texto con los artefactos locales.")
             return
-        left, right = st.columns([1, 2])
+        left, right = st.columns([1, 1.2])
         with left:
             render_result_card(
                 prediction.label,
@@ -165,6 +166,10 @@ def render_individual() -> None:
             st.subheader("Probabilidades del modelo local")
             render_probability_chart(prediction.probabilities)
         st.caption("La confianza mostrada es una estimación interna del modelo local, no una garantía de corrección.")
+        with st.expander("Traza técnica"):
+            st.write(f"Predicción local: **{prediction.label}**")
+            st.write(f"Confianza local: **{prediction.confidence:.1%}**")
+            st.write("Origen: **Modelo local**")
 
 
 def render_batch() -> None:
@@ -227,8 +232,14 @@ def render_individual_controlled() -> None:
         st.caption("La detección puede ser menos fiable en textos breves o ambiguos.")
     else:
         st.write("La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado.")
+    st.caption("Procesamiento local-first: la inferencia inicial siempre se evalúa localmente.")
     with st.form("individual_form"):
-        text = st.text_area("Comentario", max_chars=MAX_TEXT_LENGTH, height=180)
+        text = st.text_area(
+            "Comentario",
+            max_chars=MAX_TEXT_LENGTH,
+            height=160,
+            placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
+        )
         submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
     if not submitted:
         return
@@ -277,20 +288,35 @@ def render_individual_controlled() -> None:
         st.error("No fue posible analizar el texto con los artefactos locales.")
         return
     if direct_result is not None and direct_result.direct_review_requested:
-        left,right=st.columns([1,2])
+        left, right = st.columns([1, 1.2])
         with left:
-            origin="Revisión multilingüe directa" if direct_result.direct_review_state=="direct_multilingual_review" else "Fallback local"
-            render_result_card(direct_result.final_prediction,prediction.confidence,origin,confidence_help="Estimación interna del clasificador local; no representa la confianza de la revisión externa.")
-            if direct_result.language_state=="short_text_uncertain":st.markdown("**Idioma:** Idioma incierto por texto breve")
-            else:st.markdown(f"**Idioma detectado:** {direct_result.language_name or direct_result.detected_language or 'No determinado'}")
+            origin = "Revisión multilingüe directa" if direct_result.direct_review_state == "direct_multilingual_review" else "Fallback local"
+            render_result_card(
+                direct_result.final_prediction,
+                prediction.confidence,
+                origin,
+                confidence_help="Estimación interna del clasificador local; no representa la confianza de la revisión externa.",
+            )
+            if direct_result.language_state == "short_text_uncertain":
+                st.markdown("**Idioma:** Idioma incierto por texto breve")
+            else:
+                st.markdown(f"**Idioma detectado:** {direct_result.language_name or direct_result.detected_language or 'No determinado'}")
+            if direct_result.direct_review_state == "direct_multilingual_review":
+                st.success("La clasificación proviene de una revisión multilingüe directa.")
+                st.caption("Para esta revisión se envió únicamente el comentario anonimizado.")
+            else:
+                st.warning("Revisión externa no disponible; se utilizó el fallback local.")
         with right:
             st.subheader("Probabilidades del modelo local")
             render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
-        if direct_result.direct_review_state=="direct_multilingual_review":
-            st.success("La clasificación proviene de una revisión multilingüe directa.");st.caption("Para esta revisión se envió únicamente el comentario anonimizado.")
-        else:st.warning("Revisión externa no disponible; se utilizó el fallback local.")
+        with st.expander("Detalle técnico de revisión"):
+            st.write(f"Predicción local: **{prediction.label}**")
+            st.write(f"Confianza local: **{prediction.confidence:.1%}**")
+            st.write(f"Estado directo: **{direct_result.direct_review_state}**")
+            if direct_result.direct_review_latency_ms is not None:
+                st.write(f"Latencia externa: **{direct_result.direct_review_latency_ms:.0f} ms**")
         return
-    left, right = st.columns([1, 2])
+    left, right = st.columns([1, 1.2])
     with left:
         if result.review_state in {"reviewed", "disagreement"}:
             origin = "Revisión híbrida"
@@ -305,6 +331,12 @@ def render_individual_controlled() -> None:
             confidence_help="Estimación interna del clasificador local. No representa la confianza del resultado híbrido.",
             state_label=REVIEW_STATE_LABELS[result.review_state],
         )
+        if result.review_state == "disagreement":
+            st.info("El second check modificó la clasificación inicial.")
+        elif result.review_state == "reviewed":
+            st.success("El second check confirmó la clasificación local.")
+        elif result.review_state == "fallback_local":
+            st.warning("La revisión externa no estuvo disponible; se conserva la clasificación local.")
     with right:
         st.subheader("Probabilidades del modelo local")
         st.caption("Distribución previa al second check")
@@ -323,12 +355,6 @@ def render_individual_controlled() -> None:
                 st.warning("Límite de llamadas externas alcanzado; el análisis continuó con el texto original.")
             else:
                 st.warning("La traducción externa no estuvo disponible; el análisis continuó con el texto original.")
-    if result.review_state == "disagreement":
-        st.info("El second check modificó la clasificación inicial.")
-    elif result.review_state == "reviewed":
-        st.success("El second check confirmó la clasificación local.")
-    elif result.review_state == "fallback_local":
-        st.warning("La revisión externa no estuvo disponible; se conserva la clasificación local.")
     with st.expander("Detalle de revisión"):
         st.write(f"Predicción local: **{result.local_prediction}**")
         st.write(f"Confianza local: **{result.local_confidence:.1%}**")

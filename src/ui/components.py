@@ -56,6 +56,20 @@ def render_result_card(
     state_label: str | None = None,
 ) -> None:
     """Render the common result metrics while preserving current labels."""
+    badge_style = {
+        "Positivo": "badge-positive",
+        "Negativo": "badge-negative",
+        "Neutro": "badge-neutral",
+    }.get(final_prediction, "badge-neutral")
+    st.markdown(
+        f"""
+        <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; flex-wrap:wrap;">
+            <span class="sentiment-badge {badge_style}">{final_prediction}</span>
+            <span class="origin-badge">{origin}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.metric("Resultado final", final_prediction)
     st.metric(
         "Confianza del modelo local",
