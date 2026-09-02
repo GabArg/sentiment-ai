@@ -1,0 +1,38 @@
+{
+  "requests": 8,
+  "valid": 8,
+  "accuracy": 1.0,
+  "accuracy_by_language": {
+    "en": 1.0,
+    "es": 1.0,
+    "it": 1.0,
+    "pt": 1.0
+  },
+  "accuracy_by_class": {
+    "Negativo": 1.0,
+    "Neutro": 1.0,
+    "Positivo": 1.0
+  },
+  "short_text_accuracy": 1.0,
+  "finish_reason": {
+    "stop": 8
+  },
+  "truncations": 0,
+  "errors": {},
+  "calls_per_comment": 1.0,
+  "tokens": {
+    "input": 2212,
+    "output": 725,
+    "total": 2937
+  },
+  "cost_usd": 0.00131795,
+  "cost_per_comment_usd": 0.00016474375,
+  "latency_ms": {
+    "min": 797.2640999942087,
+    "median": 925.8141500031343,
+    "max": 1649.6745000040391
+  },
+  "pacing_wait_seconds": 55.82799999999406,
+  "elapsed_seconds": 64.26756949999253,
+  "fallbacks": 0
+}
