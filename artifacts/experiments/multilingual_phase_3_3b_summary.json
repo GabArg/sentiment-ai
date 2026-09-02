@@ -1,0 +1,41 @@
+{
+  "requests": 5,
+  "valid_responses": 5,
+  "finish_reason": {
+    "stop": 5
+  },
+  "truncations": 0,
+  "invalid_json": 0,
+  "schema_violations": 0,
+  "errors": {},
+  "accuracy": 1.0,
+  "tokens": {
+    "input": 1359,
+    "output": 645,
+    "total": 2004
+  },
+  "cost_usd": 0.0009594,
+  "cost_per_comment_usd": 0.00019188,
+  "latency_ms": {
+    "min": 321.8815000000177,
+    "median": 403.7495000011404,
+    "max": 1871.297699995921
+  },
+  "initial_clean_window_wait_seconds": 0.0,
+  "pacing_wait_seconds": 0,
+  "elapsed_seconds": 3.4099750999957905,
+  "promotion_gate": true,
+  "combined": {
+    "historical_valid_3_3": 13,
+    "recovered_3_3b": 5,
+    "correct": 18,
+    "total": 18,
+    "single_continuous_run": false
+  },
+  "privacy": {
+    "anonymized_before_request": true,
+    "expected_sent": false,
+    "local_prediction_sent": false,
+    "metadata_sent": false
+  }
+}

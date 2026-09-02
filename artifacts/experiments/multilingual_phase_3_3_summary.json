@@ -1,0 +1,74 @@
+{
+  "requests": 18,
+  "valid_json": 13,
+  "invalid_json": 0,
+  "schema_violations": 0,
+  "truncations": 4,
+  "finish_reason": {
+    "stop": 13,
+    "length": 4,
+    "none": 1
+  },
+  "provider_errors": {
+    "empty_response": 4,
+    "rate_limited": 1
+  },
+  "end_to_end_accuracy": 0.7222222222222222,
+  "valid_response_accuracy": 1.0,
+  "accuracy_by_language": {
+    "en": 0.5,
+    "it": 0.8333333333333334,
+    "pt": 0.8333333333333334
+  },
+  "accuracy_by_class": {
+    "Negativo": 0.5,
+    "Neutro": 0.6666666666666666,
+    "Positivo": 1.0
+  },
+  "factual_neutral_accuracy": 0.6666666666666666,
+  "short_text_accuracy": 0.5555555555555556,
+  "tokens": {
+    "input": 5113,
+    "output": 1876,
+    "total": 6989,
+    "mean_output": 110.3529411764706,
+    "max_output": 192
+  },
+  "total_cost_usd": 0.00319655,
+  "cost_per_comment_usd": 0.0001775861111111111,
+  "cost_per_100_usd": 0.01775861111111111,
+  "latency_ms": {
+    "min": 228.40440000436502,
+    "median": 400.1716499988106,
+    "p95": 1065.181165001921,
+    "max": 2037.6161000021966
+  },
+  "pacing_wait_seconds": 174.67300000000978,
+  "elapsed_seconds": 183.83307790000254,
+  "by_contract": {
+    "sentiment_only": {
+      "cases": 9,
+      "accuracy": 0.5555555555555556,
+      "mean_output_tokens": 111.5,
+      "max_output_tokens": 128
+    },
+    "sentiment_rationale": {
+      "cases": 9,
+      "accuracy": 0.8888888888888888,
+      "mean_output_tokens": 109.33333333333333,
+      "max_output_tokens": 192
+    }
+  },
+  "privacy": {
+    "anonymized_before_request": true,
+    "expected_sent": false,
+    "local_prediction_sent": false,
+    "confidence_sent": false,
+    "metadata_sent": false
+  },
+  "artifacts": {
+    "results": "C:\\Users\\Admin\\Desktop\\sentiment-ai\\sentiment-ai-recovered\\artifacts\\experiments\\multilingual_phase_3_3_results.jsonl",
+    "summary": "C:\\Users\\Admin\\Desktop\\sentiment-ai\\sentiment-ai-recovered\\artifacts\\experiments\\multilingual_phase_3_3_summary.json",
+    "costs": "C:\\Users\\Admin\\Desktop\\sentiment-ai\\sentiment-ai-recovered\\artifacts\\experiments\\multilingual_phase_3_3_costs.csv"
+  }
+}

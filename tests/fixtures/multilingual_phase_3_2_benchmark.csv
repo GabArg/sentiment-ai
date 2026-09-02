@@ -1,0 +1,13 @@
+case_id,text,expected_sentiment,language,case_type,paired_a
+en_positive,The support team solved my issue quickly.,Positivo,en,positive_clear,false
+en_negative,The product stopped working after one day.,Negativo,en,negative_clear,true
+en_neutral,The package contains three items.,Neutro,en,neutral_factual,true
+en_contrast,The service was not disappointing.,Positivo,en,negation_contrast,true
+pt_positive,A equipe de suporte resolveu meu problema rapidamente.,Positivo,pt,positive_clear,false
+pt_negative,O produto parou de funcionar depois de um dia.,Negativo,pt,negative_clear,true
+pt_neutral,O pacote contém três itens.,Neutro,pt,neutral_factual,true
+pt_contrast,O serviço não foi decepcionante.,Positivo,pt,negation_contrast,true
+it_positive,Il team di assistenza ha risolto rapidamente il mio problema.,Positivo,it,positive_clear,false
+it_negative,Il prodotto ha smesso di funzionare dopo un giorno.,Negativo,it,negative_clear,true
+it_neutral,La confezione contiene tre articoli.,Neutro,it,neutral_factual,true
+it_contrast,Il servizio non è stato deludente.,Positivo,it,negation_contrast,true

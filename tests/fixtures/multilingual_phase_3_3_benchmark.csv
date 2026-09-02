@@ -1,0 +1,19 @@
+case_id,language,expected_sentiment,text,case_type,contract_variant,max_completion_tokens,is_short
+en-pos-r,en,Positivo,The support agent was incredibly helpful and solved everything quickly.,clear_positive,sentiment_rationale,192,false
+en-pos-s,en,Positivo,Not bad at all.,contrast_positive,sentiment_only,128,true
+en-neg-r,en,Negativo,The replacement failed again and customer service ignored my messages.,clear_negative,sentiment_rationale,192,false
+en-neg-s,en,Negativo,I won't return.,short_negative,sentiment_only,128,true
+en-neu-r,en,Neutro,The package was registered at the warehouse on Friday morning.,factual_neutral,sentiment_rationale,192,false
+en-neu-s,en,Neutro,Three items included.,short_factual_neutral,sentiment_only,128,true
+pt-pos-r,pt,Positivo,A equipe resolveu tudo rapidamente e o atendimento foi muito atencioso.,clear_positive,sentiment_rationale,192,false
+pt-pos-s,pt,Positivo,Não foi ruim.,contrast_positive,sentiment_only,128,true
+pt-neg-r,pt,Negativo,O produto quebrou novamente e ninguém respondeu às minhas mensagens.,clear_negative,sentiment_rationale,192,false
+pt-neg-s,pt,Negativo,Não compro novamente.,short_negative,sentiment_only,128,true
+pt-neu-r,pt,Neutro,O pacote foi registrado no depósito na sexta-feira de manhã.,factual_neutral,sentiment_rationale,192,false
+pt-neu-s,pt,Neutro,Três itens incluídos.,short_factual_neutral,sentiment_only,128,true
+it-pos-r,it,Positivo,Il team ha risolto tutto rapidamente ed è stato molto disponibile.,clear_positive,sentiment_rationale,192,false
+it-pos-s,it,Positivo,Non era male.,contrast_positive,sentiment_only,128,true
+it-neg-r,it,Negativo,Il prodotto si è rotto di nuovo e nessuno ha risposto ai messaggi.,clear_negative,sentiment_rationale,192,false
+it-neg-s,it,Negativo,Non tornerò più.,short_negative,sentiment_only,128,true
+it-neu-r,it,Neutro,Il pacco è stato registrato in magazzino venerdì mattina.,factual_neutral,sentiment_rationale,192,false
+it-neu-s,it,Neutro,Tre articoli inclusi.,short_factual_neutral,sentiment_only,128,true
