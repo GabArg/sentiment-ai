@@ -276,6 +276,8 @@ def test_multilingual_and_hybrid_keep_translation_and_review_states_separate(mon
 
 def test_direct_multilingual_individual_label_privacy_and_no_translation(monkeypatch):
     monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW","true")
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT","true")
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT","true")
     monkeypatch.setenv("CEREBRAS_API_KEY","test")
     monkeypatch.setattr(StructuredSentimentReviewProvider,"review_sentiment",lambda *_: StructuredReviewResult("Neutro","mock","v1",True,finish_reason="stop",latency_ms=4))
     monkeypatch.setattr(CerebrasTranslationProvider,"translate",lambda *_: (_ for _ in ()).throw(AssertionError("must not translate")))

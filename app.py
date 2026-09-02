@@ -62,6 +62,11 @@ TRANSLATION_STATE_LABELS = {
     "unsupported_language": "Idioma no soportado",
     "detection_error": "Error de detección",
 }
+DIRECT_REVIEW_STATE_LABELS = {
+    "local_only": "Modelo local",
+    "direct_multilingual_review": "Revisión multilingüe directa",
+    "direct_review_failed": "Fallback local",
+}
 EXTERNAL_ERROR_LABELS = {
     "external_budget_exceeded": "Límite de llamadas externas alcanzado",
 }
@@ -489,6 +494,8 @@ def render_batch_controlled() -> None:
             display["review_state"] = display["review_state"].map(REVIEW_STATE_LABELS).fillna("Estado desconocido")
         if "translation_state" in display:
             display["translation_state"] = display["translation_state"].map(TRANSLATION_STATE_LABELS).fillna("Estado desconocido")
+        if "direct_review_state" in display:
+            display["direct_review_state"] = display["direct_review_state"].map(DIRECT_REVIEW_STATE_LABELS).fillna("Estado desconocido")
         if "translation_error_code" in display:
             display["translation_error_code"] = display["translation_error_code"].map(
                 lambda value: EXTERNAL_ERROR_LABELS.get(value, value)
@@ -499,7 +506,7 @@ def render_batch_controlled() -> None:
                 display[name] = display[name].map(lambda value: f"{value:.1%}")
         for name in percentage_columns:
             display[name] = display[name].map(lambda value: f"{value:.1%}")
-        display = display.rename(columns={"review_state": "Estado de revisión", "translation_state": "Estado de traducción"})
+        display = display.rename(columns={"review_state": "Estado de revisión", "translation_state": "Estado de traducción", "direct_review_state": "Estado de revisión directa"})
         st.dataframe(display.head(100), width="stretch", hide_index=True)
         summary = st.session_state.get("hybrid_summary")
         if isinstance(summary, dict):
