@@ -20,10 +20,13 @@ from src.batch import (
     analyze_dataframe,
     analyze_dataframe_hybrid,
     analyze_dataframe_multilingual,
+    analyze_dataframe_direct_multilingual,
     estimate_hybrid_reviews,
     estimate_multilingual_translations,
 )
 from src.external_requests import ExternalRequestCoordinator
+from src.direct_multilingual import evaluate_direct_multilingual
+from src.direct_review_config import load_direct_review_config
 from src.hybrid import evaluate_hybrid_text
 from src.hybrid_config import HybridRoutingConfig, load_hybrid_config
 from src.language_detection import LocalLanguageDetector
@@ -40,6 +43,7 @@ from src.reporting import (
 from src.sentiment_review import CerebrasSentimentReviewProvider
 from src.rate_pacer import RatePacer
 from src.translation import CerebrasTranslationProvider
+from src.structured_sentiment_review import StructuredSentimentReviewProvider
 
 
 MAX_TEXT_LENGTH = 5_000
@@ -81,6 +85,9 @@ def get_hybrid_config() -> HybridRoutingConfig:
 
 def get_multilingual_config() -> MultilingualConfig:
     return load_multilingual_config(st.secrets)
+
+def get_direct_review_config():
+    return load_direct_review_config(st.secrets)
 
 
 def get_batch_results() -> pd.DataFrame | None:
@@ -210,11 +217,14 @@ def render_batch() -> None:
 def render_individual_controlled() -> None:
     config = get_hybrid_config()
     multilingual = get_multilingual_config()
-    if not config.enabled and not multilingual.enabled:
+    direct_config = get_direct_review_config()
+    if not config.enabled and not multilingual.enabled and not direct_config.enabled:
         render_individual()
         return
     st.header("Análisis individual")
-    if multilingual.enabled:
+    if direct_config.enabled:
+        st.write("Los textos no españoles o breves pueden recibir una revisión multilingüe directa sobre el comentario anonimizado.")
+    elif multilingual.enabled:
         st.write("El idioma se detecta localmente. Los textos que requieren traducción se anonimizan antes de enviarse al proveedor externo.")
         st.caption("La detección puede ser menos fiable en textos breves o ambiguos.")
     else:
@@ -229,7 +239,12 @@ def render_individual_controlled() -> None:
         return
     try:
         predictor = get_predictor()
-        if multilingual.enabled:
+        direct_result = None
+        if direct_config.enabled:
+            coordinator = ExternalRequestCoordinator(multilingual.max_external_calls_per_batch, RatePacer(config.max_requests, config.window_seconds, config.pacing_margin_seconds))
+            direct_result = evaluate_direct_multilingual(text,predictor,LocalLanguageDetector(),StructuredSentimentReviewProvider(api_key=_streamlit_cerebras_key(),max_retries=0),coordinator,config,CerebrasSentimentReviewProvider(api_key=_streamlit_cerebras_key(),max_retries=0) if config.enabled else None)
+            prediction=predictor.predict_one(text);preparation=None;result=direct_result.hybrid
+        elif multilingual.enabled:
             coordinator = ExternalRequestCoordinator(
                 multilingual.max_external_calls_per_batch,
                 RatePacer(config.max_requests, config.window_seconds, config.pacing_margin_seconds),
@@ -262,6 +277,24 @@ def render_individual_controlled() -> None:
             )
     except Exception:
         st.error("No fue posible analizar el texto con los artefactos locales.")
+        return
+    if direct_result is not None and direct_result.direct_review_requested:
+        left,right=st.columns([1,2])
+        with left:
+            st.metric("Resultado final",direct_result.final_prediction)
+            st.metric("Confianza del modelo local",f"{prediction.confidence:.1%}",help="Estimación interna del clasificador local; no representa la confianza de la revisión externa.")
+            origin="Revisión multilingüe directa" if direct_result.direct_review_state=="direct_multilingual_review" else "Fallback local"
+            st.caption(f"Origen: {origin}")
+            if direct_result.language_state=="short_text_uncertain":st.markdown("**Idioma:** Idioma incierto por texto breve")
+            else:st.markdown(f"**Idioma detectado:** {direct_result.language_name or direct_result.detected_language or 'No determinado'}")
+        with right:
+            st.subheader("Probabilidades del modelo local")
+            chart_data=sentiment_probability_frame(prediction.probabilities)
+            figure=px.bar(chart_data,x="probability",y="sentiment",orientation="h",color="sentiment",color_discrete_map=SENTIMENT_COLORS,text=chart_data["probability"].map(lambda value:f"{value:.1%}"),labels={"probability":"Probabilidad local","sentiment":""})
+            figure.update_layout(showlegend=False,height=280,margin=dict(l=0,r=10,t=10,b=0));figure.update_xaxes(tickformat=".0%",range=[0,1]);st.plotly_chart(figure,use_container_width=True)
+        if direct_result.direct_review_state=="direct_multilingual_review":
+            st.success("La clasificación proviene de una revisión multilingüe directa.");st.caption("Para esta revisión se envió únicamente el comentario anonimizado.")
+        else:st.warning("Revisión externa no disponible; se utilizó el fallback local.")
         return
     left, right = st.columns([1, 2])
     with left:
@@ -333,17 +366,22 @@ def render_individual_controlled() -> None:
 def render_batch_controlled() -> None:
     config = get_hybrid_config()
     multilingual = get_multilingual_config()
-    if not config.enabled and not multilingual.enabled:
+    direct_config=get_direct_review_config()
+    if not config.enabled and not multilingual.enabled and not direct_config.enabled:
         render_batch()
         return
     st.header("Análisis masivo")
-    if multilingual.enabled:
+    if direct_config.enabled:
+        st.write("Los textos no españoles o breves usan revisión multilingüe directa; no se traducen.")
+    elif multilingual.enabled:
         st.write("La detección local y la traducción controlada ocurren antes del análisis de sentimiento.")
     else:
         st.write("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
     if uploaded is None:
-        if multilingual.enabled:
+        if direct_config.enabled:
+            st.info("Sólo se envía el comentario anonimizado para las revisiones directas; no se envían otras columnas del CSV.")
+        elif multilingual.enabled:
             st.info("Los textos que requieren traducción se anonimizan antes de enviarse a Cerebras. Sólo se envía el comentario anonimizado, sin otras columnas; el original queda preservado en la app.")
         else:
             st.info("Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV.")
@@ -357,7 +395,9 @@ def render_batch_controlled() -> None:
     st.dataframe(frame.head(20), width="stretch", hide_index=True)
     column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
     try:
-        if multilingual.enabled:
+        if direct_config.enabled:
+            st.info(f"Límite total compartido de llamadas externas: {multilingual.max_external_calls_per_batch:,}. Las rutas directas consumen una llamada.")
+        elif multilingual.enabled:
             translations, _ = estimate_multilingual_translations(frame, column, LocalLanguageDetector())
             review_note = "Los second checks se determinan después de traducir y clasificar." if config.enabled else "Second checks desactivados."
             st.info(
@@ -385,7 +425,10 @@ def render_batch_controlled() -> None:
             def on_pacing(_wait):
                 pacing_status.info("Esperando ventana de Cerebras para continuar…")
 
-            if multilingual.enabled:
+            if direct_config.enabled:
+                coordinator=ExternalRequestCoordinator(multilingual.max_external_calls_per_batch,RatePacer(config.max_requests,config.window_seconds,config.pacing_margin_seconds),on_pacing)
+                results,dropped,summary=analyze_dataframe_direct_multilingual(frame,column,get_predictor(),LocalLanguageDetector(),StructuredSentimentReviewProvider(api_key=_streamlit_cerebras_key(),max_retries=1),coordinator,config,CerebrasSentimentReviewProvider(api_key=_streamlit_cerebras_key(),max_retries=1) if config.enabled else None,on_progress)
+            elif multilingual.enabled:
                 coordinator = ExternalRequestCoordinator(
                     multilingual.max_external_calls_per_batch,
                     RatePacer(
@@ -424,7 +467,9 @@ def render_batch_controlled() -> None:
             st.session_state["hybrid_summary"] = summary
             st.session_state.pop("ai_report", None)
             st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
-            if multilingual.enabled:
+            if direct_config.enabled:
+                st.info(f"Llamadas externas consumidas: {summary['external_calls_used']:,} de {summary['external_call_limit']:,}; revisiones directas {summary['direct_reviews_attempted']:,}.")
+            elif multilingual.enabled:
                 st.info(
                     f"Llamadas externas consumidas: {summary['external_calls_used']:,} de "
                     f"{summary['external_call_limit']:,} (traducciones {summary['translations_attempted']:,}; "

@@ -15,6 +15,7 @@ from src.preprocessing import prepare_text_column
 from src.rate_pacer import RatePacer
 from src.review_router import route_prediction
 from src.sentiment_review import SentimentReviewProvider
+from src.direct_multilingual import evaluate_direct_multilingual
 
 
 def analyze_dataframe(
@@ -212,4 +213,26 @@ def analyze_dataframe_multilingual(
         "fallback": int((results["review_state"] == "fallback_local").sum()),
     }
     return results, dropped, summary
+
+
+def analyze_dataframe_direct_multilingual(frame, text_column, predictor, detector, provider, coordinator, hybrid_config=None, hybrid_provider=None, on_progress=None):
+    """One-call direct reviews for non-Spanish/short text; preserves source order and columns."""
+    prepared, dropped = prepare_text_column(frame, text_column)
+    clean = frame[text_column].fillna("").astype(str).str.strip()
+    original_rows = frame.loc[clean.str.len() >= 2].reset_index(drop=True)
+    records=[]
+    for index,(original_row,text) in enumerate(zip(original_rows.to_dict("records"),prepared["text"]),start=1):
+        if on_progress:on_progress(index,len(prepared))
+        result=evaluate_direct_multilingual(text,predictor,detector,provider,coordinator,hybrid_config,hybrid_provider)
+        local=predictor.predict_one(text);row=dict(original_row);row["text"]=text;row["sentiment"]=result.final_prediction;row["confidence"]=local.confidence
+        for label,probability in local.probabilities.items():row[f"probability_{label.casefold()}"]=probability
+        row.update({"local_sentiment":result.local_prediction,"local_confidence":result.local_confidence,
+          "detected_language":result.detected_language,"language_state":result.language_state,
+          "direct_review_requested":result.direct_review_requested,"direct_review_state":result.direct_review_state,
+          "direct_review_provider":result.direct_review_provider,"direct_review_model":result.direct_review_model,
+          "direct_review_latency_ms":result.direct_review_latency_ms,"direct_review_finish_reason":result.direct_review_finish_reason,
+          "direct_review_error_code":result.direct_review_error_code})
+        records.append(row)
+    results=pd.DataFrame.from_records(records)
+    return results,dropped,{"external_calls_used":coordinator.used,"direct_reviews_attempted":int(coordinator.calls["sentiment_review"]),"external_call_limit":coordinator.max_calls,"direct_review_fallbacks":int((results.direct_review_state=="direct_review_failed").sum())}
 
