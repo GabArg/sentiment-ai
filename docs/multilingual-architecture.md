@@ -2,6 +2,26 @@
 
 Las Fases 3.0B/3.0C implementan el núcleo y su integración UX/batch detrás de `ENABLE_MULTILINGUAL_SENTIMENT`, que permanece `false` por defecto. La validación real se limitó a seis traducciones controladas.
 
+## Ruta moderna candidata (Fase 3.4)
+
+`ENABLE_DIRECT_MULTILINGUAL_REVIEW=false` es un flag independiente. Cuando se activa,
+tiene precedencia sólo para EN/PT/IT de más de cuatro tokens y para textos de hasta cuatro
+tokens, cuyo idioma se marca `short_text_uncertain` sin ejecutar langdetect. Esas rutas
+envían únicamente el original anonimizado a un review estructurado de una llamada, sin
+traducción. Español largo conserva local/híbrido; unsupported y errores de detección
+conservan el fallback actual.
+
+El provider usa `gpt-oss-120b`, JSON Schema estricto, únicamente `sentiment` y 256 tokens.
+Traducción, hybrid review y direct review comparten `ExternalRequestCoordinator` y
+`HYBRID_MAX_EXTERNAL_CALLS_PER_BATCH`. La arquitectura histórica de traducción permanece
+disponible cuando el nuevo flag está apagado. Esta candidata deriva de los experimentos
+3.1–3.3B y todavía no se declara production-ready.
+
+El preview controlado de Fase 3.4 ejecutó ocho casos (EN/PT/IT y dos textos breves):
+8/8 respuestas válidas y correctas, `finish_reason=stop`, sin truncamientos, 429 ni
+fallbacks. Consumió una llamada por comentario, 2.937 tokens y USD 0.00131795. Es una
+muestra de integración, no una métrica productiva.
+
 ## Alcance y decisión del detector
 
 El alcance inicial queda limitado a `es`, `en`, `pt` e `it`. Se incorporó `langdetect==1.0.9`, configurado una sola vez con `DetectorFactory.seed = 0`. Es pequeño (wheel cercano a 1 MB), offline, Apache 2.0 y cubre los cuatro idiomas. Su release es de 2021, el propio proyecto advierte resultados inestables en texto corto o ambiguo sin semilla, y sus scores no se exponen como probabilidades calibradas.

@@ -163,6 +163,16 @@ CEREBRAS_API_KEY = "..."
 HYBRID_MAX_EXTERNAL_CALLS_PER_BATCH = 25
 ```
 
+La ruta moderna de revisión multilingüe directa es experimental y opt-in:
+
+```toml
+ENABLE_DIRECT_MULTILINGUAL_REVIEW = true
+```
+
+Con esta opción, textos EN/PT/IT de más de cuatro tokens y textos breves de idioma
+incierto se revisan directamente con un contrato JSON estricto, sin traducción previa.
+El default permanece `false` y no constituye soporte productivo universal.
+
 La detección puede ser menos fiable en textos breves o ambiguos. Habilitar multilenguaje no activa automáticamente el second check híbrido.
 
 ## Evolución y atribución
