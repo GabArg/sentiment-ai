@@ -7,16 +7,30 @@ import plotly.express as px
 import streamlit as st
 
 
-SENTIMENT_COLORS = {"Negativo": "#D92D20", "Neutro": "#475467", "Positivo": "#078A61"}
+SENTIMENT_COLORS = {"Negativo": "#B42318", "Neutro": "#526174", "Positivo": "#15803D"}
 
 
-def apply_plotly_theme(figure, *, height: int = 280, top_margin: int = 10):
-    """Apply the current compact chart layout without changing its data."""
+def apply_plotly_theme(
+    figure,
+    *,
+    height: int | None = 280,
+    top_margin: int = 10,
+    right_margin: int = 10,
+    showlegend: bool = False,
+):
+    """Apply the shared analytics theme without changing chart data."""
     figure.update_layout(
-        showlegend=False,
+        showlegend=showlegend,
         height=height,
-        margin=dict(l=0, r=10, t=top_margin, b=0),
+        margin=dict(l=0, r=right_margin, t=top_margin, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#172033", family="Arial, sans-serif"),
+        colorway=["#4F46E5", "#15803D", "#B42318", "#526174"],
+        hoverlabel=dict(bgcolor="#FFFFFF", bordercolor="#E2E8F0", font_color="#172033"),
     )
+    figure.update_xaxes(gridcolor="#E2E8F0", zeroline=False, linecolor="#E2E8F0")
+    figure.update_yaxes(gridcolor="#E2E8F0", zeroline=False, linecolor="#E2E8F0")
     return figure
 
 

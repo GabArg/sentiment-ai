@@ -45,7 +45,7 @@ from src.rate_pacer import RatePacer
 from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
 from src.ui import load_global_styles, render_probability_chart, render_result_card
-from src.ui.charts import SENTIMENT_COLORS
+from src.ui.charts import SENTIMENT_COLORS, apply_plotly_theme
 
 
 MAX_TEXT_LENGTH = 5_000
@@ -553,7 +553,7 @@ def render_dashboard() -> None:
             labels={"sentiment": "Sentimiento", "count": "Comentarios"},
             title="Distribución de sentimientos",
         )
-        figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
+        apply_plotly_theme(figure, height=None, top_margin=50, right_margin=0)
         st.plotly_chart(figure, use_container_width=True)
     with right:
         confidence = results.groupby("sentiment", as_index=False)["confidence"].mean()
@@ -568,7 +568,7 @@ def render_dashboard() -> None:
             title="Confianza media por clase",
         )
         figure.update_yaxes(tickformat=".0%", range=[0, 1])
-        figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
+        apply_plotly_theme(figure, height=None, top_margin=50, right_margin=0)
         st.plotly_chart(figure, use_container_width=True)
 
     st.subheader("Visión de negocio")
@@ -606,12 +606,13 @@ def render_pareto() -> None:
     st.dataframe(display, width="stretch", hide_index=True)
 
     figure = make_subplots(specs=[[{"secondary_y": True}]])
-    figure.add_trace(go.Bar(x=pareto["topic"], y=pareto["frequency"], name="Frecuencia", marker_color="#3448C5"), secondary_y=False)
+    figure.add_trace(go.Bar(x=pareto["topic"], y=pareto["frequency"], name="Frecuencia", marker_color="#4F46E5"), secondary_y=False)
     figure.add_trace(go.Scatter(x=pareto["topic"], y=pareto["cumulative_percentage"], name="% acumulado", mode="lines+markers", line=dict(color="#D92D20", width=3)), secondary_y=True)
     figure.add_hline(y=80, line_dash="dash", line_color="#667085", annotation_text="80%", secondary_y=True)
     figure.update_yaxes(title_text="Frecuencia", secondary_y=False)
     figure.update_yaxes(title_text="Porcentaje acumulado", range=[0, 105], ticksuffix="%", secondary_y=True)
-    figure.update_layout(height=520, margin=dict(l=0, r=0, t=30, b=0), xaxis_tickangle=-35)
+    apply_plotly_theme(figure, height=520, top_margin=30, right_margin=0, showlegend=True)
+    figure.update_layout(xaxis_tickangle=-35)
     st.plotly_chart(figure, use_container_width=True)
 
 
