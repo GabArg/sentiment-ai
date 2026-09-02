@@ -1,0 +1,9 @@
+case_id,language,expected_sentiment,text,is_short
+en-pos,en,Positivo,The support team solved my problem quickly and politely.,false
+en-neu,en,Neutro,The order was registered at the warehouse on Thursday morning.,false
+pt-neg,pt,Negativo,O produto chegou quebrado e ninguém respondeu à reclamação.,false
+pt-pos-negation,pt,Positivo,O atendimento não foi ruim desta vez.,false
+it-neg,it,Negativo,Il prodotto si è rotto e il supporto non ha risposto.,false
+it-neu,it,Neutro,L'ordine è stato registrato giovedì mattina.,false
+short-pos,en,Positivo,Not bad.,true
+short-neg,es,Negativo,No volveré.,true

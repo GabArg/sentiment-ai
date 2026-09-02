@@ -11,6 +11,7 @@ from src.sentiment_review import CerebrasSentimentReviewProvider, ReviewResult
 from src.language_detection import LocalLanguageDetector
 from src.multilingual_contracts import LanguageDetectionResult, TranslationResult
 from src.translation import CerebrasTranslationProvider
+from src.structured_sentiment_review import StructuredSentimentReviewProvider, StructuredReviewResult
 
 
 def test_all_plotly_charts_use_supported_streamlit_150_arguments():
@@ -22,7 +23,7 @@ def test_all_plotly_charts_use_supported_streamlit_150_arguments():
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "plotly_chart"
     ]
-    assert len(calls) == 5
+    assert len(calls) == 6
     for call in calls:
         keywords = {keyword.arg for keyword in call.keywords}
         assert "width" not in keywords
@@ -272,3 +273,20 @@ def test_multilingual_and_hybrid_keep_translation_and_review_states_separate(mon
     assert "Traducción:** Aplicada" in visible
     assert "Estado:** Corregido por second check" in visible
     assert any(item.label == "Resultado final" and item.value == "Negativo" for item in app.metric)
+
+def test_direct_multilingual_individual_label_privacy_and_no_translation(monkeypatch):
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW","true")
+    monkeypatch.setenv("CEREBRAS_API_KEY","test")
+    monkeypatch.setattr(StructuredSentimentReviewProvider,"review_sentiment",lambda *_: StructuredReviewResult("Neutro","mock","v1",True,finish_reason="stop",latency_ms=4))
+    monkeypatch.setattr(CerebrasTranslationProvider,"translate",lambda *_: (_ for _ in ()).throw(AssertionError("must not translate")))
+    app=AppTest.from_file("../app.py",default_timeout=20).run();app.text_area[0].set_value("The order arrived on Tuesday afternoon.");app.button[0].click().run()
+    assert not app.exception
+    visible=" ".join(item.value for collection in (app.caption,app.markdown,app.success) for item in collection)
+    assert "Revisión multilingüe directa" in visible and "comentario anonimizado" in visible and "Traducción" not in visible
+
+def test_direct_short_text_and_fallback_labels(monkeypatch):
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW","true");monkeypatch.setenv("CEREBRAS_API_KEY","test")
+    monkeypatch.setattr(StructuredSentimentReviewProvider,"review_sentiment",lambda *_: StructuredReviewResult(None,"mock","v1",False,"timeout"))
+    app=AppTest.from_file("../app.py",default_timeout=20).run();app.text_area[0].set_value("Not bad.");app.button[0].click().run()
+    visible=" ".join(item.value for collection in (app.caption,app.markdown,app.warning) for item in collection)
+    assert "Idioma incierto por texto breve" in visible and "Fallback local" in visible and "fallback local" in visible
