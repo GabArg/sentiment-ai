@@ -14,6 +14,7 @@ class DirectMultilingualResult:
  language_state:str; direct_review_requested:bool; direct_review_state:str; direct_review_provider:str|None=None
  direct_review_model:str|None=None; direct_review_latency_ms:float|None=None; direct_review_finish_reason:str|None=None
  direct_review_error_code:str|None=None; direct_review_usage:dict[str,int]|None=None; hybrid:HybridPrediction|None=None
+ retry_after:str|None=None; request_id:str|None=None; rate_limit_headers:dict[str,str]|None=None
 def token_count(text):return len(text.split())
 def evaluate_direct_multilingual(text,predictor:SentimentPredictor,detector:LanguageDetector,provider,coordinator:ExternalRequestCoordinator|None=None,hybrid_config:HybridRoutingConfig|None=None,hybrid_provider=None):
  observation=predictor.observe_one(text); short=token_count(text)<=4
@@ -34,4 +35,4 @@ def evaluate_direct_multilingual(text,predictor:SentimentPredictor,detector:Lang
  if not result.success:return _fallback(observation,detection,language_state,result.error_code or 'provider_error',result)
  return DirectMultilingualResult(result.sentiment,observation.local_prediction,observation.local_confidence,getattr(detection,'detected_language',None),getattr(detection,'language_name',None),language_state,True,'direct_multilingual_review',result.provider,result.model,result.latency_ms,result.finish_reason,None,result.usage)
 def _fallback(observation,detection,state,error,result=None):
- return DirectMultilingualResult(observation.local_prediction,observation.local_prediction,observation.local_confidence,getattr(detection,'detected_language',None),getattr(detection,'language_name',None),state,True,'direct_review_failed',getattr(result,'provider',None),getattr(result,'model',None),getattr(result,'latency_ms',None),getattr(result,'finish_reason',None),error,getattr(result,'usage',None))
+ return DirectMultilingualResult(observation.local_prediction,observation.local_prediction,observation.local_confidence,getattr(detection,'detected_language',None),getattr(detection,'language_name',None),state,True,'direct_review_failed',getattr(result,'provider',None),getattr(result,'model',None),getattr(result,'latency_ms',None),getattr(result,'finish_reason',None),error,getattr(result,'usage',None),None,getattr(result,'retry_after',None),getattr(result,'request_id',None),getattr(result,'rate_limit_headers',None))

@@ -30,3 +30,11 @@ def test_invalid_feature_flag_is_rejected():
 def test_invalid_pacing_window_is_rejected():
     with pytest.raises(ValueError, match="pacing window"):
         load_hybrid_config(secrets={}, environ={"HYBRID_WINDOW_SECONDS": "0"})
+
+
+def test_external_rate_limit_safety_defaults_to_two_and_is_configurable():
+    assert load_hybrid_config(secrets={}, environ={}).pacing_margin_seconds == 2.0
+    configured = load_hybrid_config(
+        secrets={}, environ={"EXTERNAL_RATE_LIMIT_SAFETY_SECONDS": "3.5"}
+    )
+    assert configured.pacing_margin_seconds == 3.5

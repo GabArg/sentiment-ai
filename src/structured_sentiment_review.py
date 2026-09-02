@@ -13,6 +13,7 @@ PROMPT='''Clasifique el sentimiento del comentario, que puede estar en español,
 class StructuredReviewResult:
  sentiment:str|None; provider:str; model:str; success:bool; error_code:str|None=None
  finish_reason:str|None=None; latency_ms:float|None=None; usage:dict[str,int]|None=None
+ retry_after:str|None=None; request_id:str|None=None; rate_limit_headers:dict[str,str]|None=None
 class StructuredSentimentReviewProvider:
  def __init__(self,api_key=None,model=DEFAULT_CEREBRAS_MODEL,client_factory:Callable[...,Any]|None=None,timeout=30.0,max_retries=0):
   self.api_key=resolve_api_key(api_key);self.model=model;self.client_factory=client_factory;self.timeout=timeout;self.max_retries=max_retries
@@ -37,7 +38,10 @@ class StructuredSentimentReviewProvider:
   except TimeoutError:return self._failure('timeout',started)
   except Exception as exc:
    code='rate_limited' if getattr(exc,'status_code',None)==429 else 'timeout' if type(exc).__name__=='APITimeoutError' else 'provider_error'
-   return self._failure(code,started)
+   headers=getattr(getattr(exc,'response',None),'headers',{}) or {}
+   safe={str(k).lower():str(v) for k,v in headers.items() if str(k).lower() in {'retry-after','x-request-id','x-ratelimit-remaining-tokens-minute','x-ratelimit-reset-tokens-minute','x-ratelimit-remaining-requests-day','x-ratelimit-reset-requests-day'}}
+   failed=self._failure(code,started)
+   return StructuredReviewResult(failed.sentiment,failed.provider,failed.model,failed.success,failed.error_code,failed.finish_reason,failed.latency_ms,failed.usage,safe.get('retry-after'),safe.get('x-request-id'),safe or None)
  def _failure(self,code,started,finish=None,usage=None):return StructuredReviewResult(None,'cerebras',self.model,False,code,finish,(time.perf_counter()-started)*1000,usage)
 def _usage(response):
  usage=getattr(response,'usage',None); values={}

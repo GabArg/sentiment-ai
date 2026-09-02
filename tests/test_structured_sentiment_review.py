@@ -24,3 +24,10 @@ def test_provider_no_key_timeout_and_429(monkeypatch):
  assert StructuredSentimentReviewProvider('x',client_factory=Factory(error=TimeoutError())).review_sentiment('x').error_code=='timeout'
  exc=RuntimeError();exc.status_code=429
  assert StructuredSentimentReviewProvider('x',client_factory=Factory(error=exc)).review_sentiment('x').error_code=='rate_limited'
+
+def test_429_exposes_only_safe_observability_headers():
+ exc=RuntimeError();exc.status_code=429
+ exc.response=SimpleNamespace(headers={'Retry-After':'12','X-Request-Id':'req-1','Authorization':'secret'})
+ result=StructuredSentimentReviewProvider('x',client_factory=Factory(error=exc)).review_sentiment('x')
+ assert result.retry_after=='12' and result.request_id=='req-1'
+ assert 'authorization' not in result.rate_limit_headers

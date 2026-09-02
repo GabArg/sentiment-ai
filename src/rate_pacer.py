@@ -1,9 +1,10 @@
-"""Injectable fixed-window pacing for sequential external reviews."""
+"""Atomic rolling-window pacing for sequential external requests."""
 
 from __future__ import annotations
 
 from collections import deque
 import time
+from threading import Lock
 from typing import Callable
 
 
@@ -12,7 +13,7 @@ class RatePacer:
         self,
         max_requests: int = 5,
         window_seconds: float = 60.0,
-        margin_seconds: float = 0.25,
+        margin_seconds: float = 2.0,
         clock: Callable[[], float] = time.monotonic,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
@@ -24,22 +25,27 @@ class RatePacer:
         self.clock = clock
         self.sleeper = sleeper
         self._timestamps: deque[float] = deque()
+        self._lock = Lock()
 
     def wait_if_needed(self, on_wait: Callable[[float], None] | None = None) -> float:
-        now = self.clock()
-        self._discard_expired(now)
-        waited = 0.0
-        if len(self._timestamps) >= self.max_requests:
-            waited = max(0.0, self.window_seconds - (now - self._timestamps[0]) + self.margin_seconds)
-            if waited:
-                if on_wait is not None:
-                    on_wait(waited)
-                self.sleeper(waited)
+        with self._lock:
+            waited = 0.0
+            effective_window = self.window_seconds + self.margin_seconds
+            while True:
                 now = self.clock()
-                self._discard_expired(now)
-        self._timestamps.append(self.clock())
-        return waited
+                self._discard_expired(now, effective_window)
+                if len(self._timestamps) < self.max_requests:
+                    self._timestamps.append(now)  # reserve before releasing the lock
+                    return waited
+                delay = max(0.0, effective_window - (now - self._timestamps[0]))
+                if delay <= 0:
+                    continue
+                if on_wait is not None:
+                    on_wait(delay)
+                self.sleeper(delay)
+                waited += delay
 
-    def _discard_expired(self, now: float) -> None:
-        while self._timestamps and now - self._timestamps[0] >= self.window_seconds:
+    def _discard_expired(self, now: float, effective_window: float | None = None) -> None:
+        expiry = self.window_seconds + self.margin_seconds if effective_window is None else effective_window
+        while self._timestamps and now - self._timestamps[0] >= expiry:
             self._timestamps.popleft()

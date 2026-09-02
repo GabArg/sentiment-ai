@@ -61,7 +61,7 @@ class HybridRoutingConfig:
     max_reviews_per_batch: int = 25
     max_requests: int = 5
     window_seconds: float = 60.0
-    pacing_margin_seconds: float = 0.25
+    pacing_margin_seconds: float = 2.0
     estimated_review_cost_usd: float = DEFAULT_REVIEW_COST_USD
 
     def __post_init__(self) -> None:
@@ -94,4 +94,5 @@ def load_hybrid_config(
         max_reviews_per_batch=_positive_int(_value("HYBRID_MAX_REVIEWS_PER_BATCH", secrets, values), 25, "HYBRID_MAX_REVIEWS_PER_BATCH"),
         max_requests=_positive_int(_value("HYBRID_MAX_REQUESTS", secrets, values), 5, "HYBRID_MAX_REQUESTS"),
         window_seconds=float(_value("HYBRID_WINDOW_SECONDS", secrets, values) or 60.0),
+        pacing_margin_seconds=float(_value("EXTERNAL_RATE_LIMIT_SAFETY_SECONDS", secrets, values) or 2.0),
     )
