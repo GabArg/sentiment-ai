@@ -44,10 +44,11 @@ from src.sentiment_review import CerebrasSentimentReviewProvider
 from src.rate_pacer import RatePacer
 from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
+from src.ui import load_global_styles, render_probability_chart, render_result_card
+from src.ui.charts import SENTIMENT_COLORS
 
 
 MAX_TEXT_LENGTH = 5_000
-SENTIMENT_COLORS = {"Negativo": "#D92D20", "Neutro": "#475467", "Positivo": "#078A61"}
 REVIEW_STATE_LABELS = {
     "local_only": "Modelo local",
     "reviewed": "Validado por second check",
@@ -148,29 +149,15 @@ def render_individual() -> None:
             return
         left, right = st.columns([1, 2])
         with left:
-            st.metric("Resultado final", prediction.label)
-            st.metric(
-                "Confianza del modelo local",
-                f"{prediction.confidence:.1%}",
-                help="Estimación interna del clasificador local. No representa una garantía de corrección.",
+            render_result_card(
+                prediction.label,
+                prediction.confidence,
+                "Modelo local",
+                confidence_help="Estimación interna del clasificador local. No representa una garantía de corrección.",
             )
-            st.caption("Origen: Modelo local")
         with right:
             st.subheader("Probabilidades del modelo local")
-            chart_data = sentiment_probability_frame(prediction.probabilities)
-            figure = px.bar(
-                chart_data,
-                x="probability",
-                y="sentiment",
-                orientation="h",
-                color="sentiment",
-                color_discrete_map=SENTIMENT_COLORS,
-                text=chart_data["probability"].map(lambda value: f"{value:.1%}"),
-                labels={"probability": "Probabilidad", "sentiment": ""},
-            )
-            figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
-            figure.update_xaxes(tickformat=".0%", range=[0, 1])
-            st.plotly_chart(figure, use_container_width=True)
+            render_probability_chart(prediction.probabilities)
         st.caption("La confianza mostrada es una estimación interna del modelo local, no una garantía de corrección.")
 
 
@@ -286,54 +273,36 @@ def render_individual_controlled() -> None:
     if direct_result is not None and direct_result.direct_review_requested:
         left,right=st.columns([1,2])
         with left:
-            st.metric("Resultado final",direct_result.final_prediction)
-            st.metric("Confianza del modelo local",f"{prediction.confidence:.1%}",help="Estimación interna del clasificador local; no representa la confianza de la revisión externa.")
             origin="Revisión multilingüe directa" if direct_result.direct_review_state=="direct_multilingual_review" else "Fallback local"
-            st.caption(f"Origen: {origin}")
+            render_result_card(direct_result.final_prediction,prediction.confidence,origin,confidence_help="Estimación interna del clasificador local; no representa la confianza de la revisión externa.")
             if direct_result.language_state=="short_text_uncertain":st.markdown("**Idioma:** Idioma incierto por texto breve")
             else:st.markdown(f"**Idioma detectado:** {direct_result.language_name or direct_result.detected_language or 'No determinado'}")
         with right:
             st.subheader("Probabilidades del modelo local")
-            chart_data=sentiment_probability_frame(prediction.probabilities)
-            figure=px.bar(chart_data,x="probability",y="sentiment",orientation="h",color="sentiment",color_discrete_map=SENTIMENT_COLORS,text=chart_data["probability"].map(lambda value:f"{value:.1%}"),labels={"probability":"Probabilidad local","sentiment":""})
-            figure.update_layout(showlegend=False,height=280,margin=dict(l=0,r=10,t=10,b=0));figure.update_xaxes(tickformat=".0%",range=[0,1]);st.plotly_chart(figure,use_container_width=True)
+            render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
         if direct_result.direct_review_state=="direct_multilingual_review":
             st.success("La clasificación proviene de una revisión multilingüe directa.");st.caption("Para esta revisión se envió únicamente el comentario anonimizado.")
         else:st.warning("Revisión externa no disponible; se utilizó el fallback local.")
         return
     left, right = st.columns([1, 2])
     with left:
-        st.metric("Resultado final", result.final_prediction)
-        st.metric(
-            "Confianza del modelo local",
-            f"{prediction.confidence:.1%}",
-            help="Estimación interna del clasificador local. No representa la confianza del resultado híbrido.",
-        )
         if result.review_state in {"reviewed", "disagreement"}:
             origin = "Revisión híbrida"
         elif result.review_state == "fallback_local":
             origin = "Fallback local"
         else:
             origin = "Modelo local"
-        st.caption(f"Origen: {origin}")
-        st.markdown(f"**Estado:** {REVIEW_STATE_LABELS[result.review_state]}")
+        render_result_card(
+            result.final_prediction,
+            prediction.confidence,
+            origin,
+            confidence_help="Estimación interna del clasificador local. No representa la confianza del resultado híbrido.",
+            state_label=REVIEW_STATE_LABELS[result.review_state],
+        )
     with right:
         st.subheader("Probabilidades del modelo local")
         st.caption("Distribución previa al second check")
-        chart_data = sentiment_probability_frame(prediction.probabilities)
-        figure = px.bar(
-            chart_data,
-            x="probability",
-            y="sentiment",
-            orientation="h",
-            color="sentiment",
-            color_discrete_map=SENTIMENT_COLORS,
-            text=chart_data["probability"].map(lambda value: f"{value:.1%}"),
-            labels={"probability": "Probabilidad local", "sentiment": ""},
-        )
-        figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
-        figure.update_xaxes(tickformat=".0%", range=[0, 1])
-        st.plotly_chart(figure, use_container_width=True)
+        render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
     st.caption("La confianza mostrada es una estimación interna del modelo local; no representa confianza del resultado híbrido.")
     if preparation is not None:
         language_label = preparation.language_name or preparation.detected_language or "No determinado"
@@ -731,23 +700,7 @@ def render_about() -> None:
         st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. Nunca se envían comentarios, el CSV ni sus otras columnas.")
 
 
-st.markdown(
-    """
-    <style>
-    :root { --ink:#182230; --muted:#667085; --line:#E4E7EC; --accent:#3448C5; }
-    .stApp { background:radial-gradient(circle at 8% 0%,rgba(52,72,197,.08),transparent 30rem),#F8FAFC; }
-    .block-container { max-width:1180px; padding-top:2.2rem; padding-bottom:3rem; }
-    h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
-    [data-testid="stMetric"] { background:#FFF; border:1px solid var(--line); padding:1rem; border-radius:12px; }
-    [data-testid="stSidebar"] { border-right:1px solid var(--line); }
-    .product-label { color:var(--accent); font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.72rem; }
-    .product-copy { color:var(--muted); line-height:1.55; font-size:.9rem; }
-    .stButton > button[kind="primary"] { background:var(--accent); border-color:var(--accent); }
-    #MainMenu, footer { visibility:hidden; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+load_global_styles()
 
 with st.sidebar:
     st.markdown('<div class="product-label">Customer Feedback Analytics</div>', unsafe_allow_html=True)

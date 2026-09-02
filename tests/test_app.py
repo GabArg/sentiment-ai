@@ -16,15 +16,20 @@ from src.structured_sentiment_review import StructuredSentimentReviewProvider, S
 
 
 def test_all_plotly_charts_use_supported_streamlit_150_arguments():
-    tree = ast.parse((Path(__file__).parents[1] / "app.py").read_text(encoding="utf-8"))
+    root = Path(__file__).parents[1]
+    trees = [
+        ast.parse((root / path).read_text(encoding="utf-8"))
+        for path in ("app.py", "src/ui/charts.py")
+    ]
     calls = [
         node
+        for tree in trees
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "plotly_chart"
     ]
-    assert len(calls) == 6
+    assert len(calls) == 4
     for call in calls:
         keywords = {keyword.arg for keyword in call.keywords}
         assert "width" not in keywords
