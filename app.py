@@ -44,7 +44,13 @@ from src.sentiment_review import CerebrasSentimentReviewProvider
 from src.rate_pacer import RatePacer
 from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
-from src.ui import load_global_styles, render_probability_chart, render_result_card
+from src.ui import (
+    load_global_styles,
+    render_probability_chart,
+    render_product_header,
+    render_result_card,
+    render_sidebar_footer,
+)
 from src.ui.charts import SENTIMENT_COLORS, apply_plotly_theme
 
 
@@ -704,23 +710,40 @@ def render_about() -> None:
 load_global_styles()
 
 with st.sidebar:
-    st.markdown('<div class="product-label">Customer Feedback Analytics</div>', unsafe_allow_html=True)
-    st.title("Sentiment AI v2")
-    st.markdown('<p class="product-copy">TF-IDF + regresión logística + analítica de negocio + informe IA opcional.</p>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="sidebar-brand">
+            <div class="product-label">Plataforma</div>
+            <div class="sidebar-brand-title">Sentiment AI</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     page = st.radio(
         "Navegación",
-        ["Análisis individual", "Análisis masivo", "Dashboard", "Pareto 80/20", "Informe", "Acerca del proyecto"],
+        [
+            "Análisis individual",
+            "Análisis masivo",
+            "Dashboard",
+            "Pareto 80/20",
+            "Informe ejecutivo",
+            "Acerca del proyecto",
+        ],
         label_visibility="collapsed",
     )
-    if get_batch_results() is not None:
-        st.success(f"Lote activo: {len(get_batch_results()):,} comentarios")
+    batch_results = get_batch_results()
+    render_sidebar_footer(
+        batch_count=len(batch_results) if batch_results is not None else None
+    )
+
+render_product_header()
 
 pages = {
     "Análisis individual": render_individual_controlled,
     "Análisis masivo": render_batch_controlled,
     "Dashboard": render_dashboard,
     "Pareto 80/20": render_pareto,
-    "Informe": render_report,
+    "Informe ejecutivo": render_report,
     "Acerca del proyecto": render_about,
 }
 pages[page]()
