@@ -469,7 +469,13 @@ def render_batch_controlled() -> None:
             progress.empty()
             pacing_status.empty()
             st.session_state["batch_results"] = results
-            st.session_state["hybrid_summary"] = summary
+            st.session_state["batch_summary"] = summary
+            st.session_state["batch_summary_kind"] = (
+                "direct" if direct_config.enabled else
+                "legacy_multilingual" if multilingual.enabled else
+                "hybrid"
+            )
+            st.session_state.pop("hybrid_summary", None)
             st.session_state.pop("ai_report", None)
             st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
             if direct_config.enabled:
@@ -508,14 +514,10 @@ def render_batch_controlled() -> None:
             display[name] = display[name].map(lambda value: f"{value:.1%}")
         display = display.rename(columns={"review_state": "Estado de revisión", "translation_state": "Estado de traducción", "direct_review_state": "Estado de revisión directa"})
         st.dataframe(display.head(100), width="stretch", hide_index=True)
-        summary = st.session_state.get("hybrid_summary")
-        if isinstance(summary, dict):
-            st.caption(
-                f"Trazabilidad: Modelo local {summary['local_only']:,} · "
-                f"Confirmados por second check {summary['reviewed']:,} · "
-                f"Corregidos por second check {summary['disagreement']:,} · "
-                f"Fallback local {summary['fallback']:,}"
-            )
+        summary = st.session_state.get("batch_summary")
+        summary_kind = st.session_state.get("batch_summary_kind")
+        if isinstance(summary, dict) and isinstance(summary_kind, str):
+            render_batch_traceability(results, summary, summary_kind)
         st.download_button(
             "Descargar CSV procesado",
             data=results.to_csv(index=False).encode("utf-8-sig"),
@@ -523,6 +525,27 @@ def render_batch_controlled() -> None:
             mime="text/csv",
             width="stretch",
         )
+
+
+def render_batch_traceability(results: pd.DataFrame, summary: dict, kind: str) -> None:
+    if kind == "direct":
+        states = results["direct_review_state"].value_counts()
+        st.caption(
+            f"Trazabilidad directa: Modelo local {int(states.get('local_only', 0)):,} · "
+            f"Revisiones multilingües {int(states.get('direct_multilingual_review', 0)):,} · "
+            f"Fallback local {summary['direct_review_fallbacks']:,} · "
+            f"Llamadas externas {summary['external_calls_used']:,}/{summary['external_call_limit']:,}"
+        )
+        return
+    if kind in {"hybrid", "legacy_multilingual"}:
+        st.caption(
+            f"Trazabilidad: Modelo local {summary['local_only']:,} · "
+            f"Confirmados por second check {summary['reviewed']:,} · "
+            f"Corregidos por second check {summary['disagreement']:,} · "
+            f"Fallback local {summary['fallback']:,}"
+        )
+        return
+    raise ValueError(f"Tipo de resumen batch no soportado: {kind}")
 
 
 def render_dashboard() -> None:
@@ -684,6 +707,7 @@ def render_report() -> None:
 def render_about() -> None:
     hybrid_enabled = get_hybrid_config().enabled
     multilingual_enabled = get_multilingual_config().enabled
+    direct_enabled = get_direct_review_config().enabled
     st.header("Acerca del proyecto")
     st.markdown(
         """
@@ -697,7 +721,9 @@ def render_about() -> None:
         """
     )
     st.subheader("Privacidad")
-    if multilingual_enabled:
+    if direct_enabled:
+        st.write("La detección y el routing de textos largos se realizan localmente. Los textos EN/PT/IT detectados y los textos breves de idioma incierto pueden enviarse a Cerebras, proveedor externo, para revisión directa; se envía únicamente el comentario anonimizado, nunca otras columnas del CSV, y el original permanece en la aplicación. El informe IA agregado es una funcionalidad separada.")
+    elif multilingual_enabled:
         st.write("La detección de idioma es local. Los comentarios que requieren traducción se anonimizan antes de enviarse a Cerebras; nunca se envían otras columnas del CSV y el texto original queda preservado en la app. Los second checks, si están habilitados por separado, comparten el mismo límite externo.")
     elif hybrid_enabled:
         st.write("La clasificación local ocurre primero. Sólo comentarios derivados pueden enviarse anonimizados a Cerebras para second check; nunca se envían otras columnas del CSV. El informe IA permanece separado y sólo recibe agregados.")

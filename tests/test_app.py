@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 from src.sentiment_review import CerebrasSentimentReviewProvider, ReviewResult
@@ -292,3 +293,72 @@ def test_direct_short_text_and_fallback_labels(monkeypatch):
     app=AppTest.from_file("../app.py",default_timeout=20).run();app.text_area[0].set_value("Not bad.");app.button[0].click().run()
     visible=" ".join(item.value for collection in (app.caption,app.markdown,app.warning) for item in collection)
     assert "Idioma incierto por texto breve" in visible and "Fallback local" in visible and "fallback local" in visible
+
+
+class _UploadedCsv:
+    def __init__(self, payload: bytes):
+        self.payload = payload
+
+    def getvalue(self):
+        return self.payload
+
+
+def _run_direct_batch(monkeypatch, review_result):
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW", "true")
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", "false")
+    monkeypatch.setenv("CEREBRAS_API_KEY", "test")
+    payload = (
+        "comment,region\n"
+        "The order arrived on Tuesday afternoon.,north\n"
+        "The support team answered quickly.,south\n"
+    ).encode("utf-8")
+    monkeypatch.setattr(st, "file_uploader", lambda *_args, **_kwargs: _UploadedCsv(payload))
+    monkeypatch.setattr(
+        StructuredSentimentReviewProvider,
+        "review_sentiment",
+        lambda *_: review_result,
+    )
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.radio[0].set_value(app.radio[0].options[1]).run()
+    app.button[0].click().run()
+    assert not app.exception
+    return app
+
+
+def test_direct_batch_end_to_end_renders_traceability_and_download(monkeypatch):
+    app = _run_direct_batch(
+        monkeypatch,
+        StructuredReviewResult("Neutro", "mock", "mock-v1", True, finish_reason="stop"),
+    )
+    assert any("Trazabilidad directa" in item.value for item in app.caption)
+    assert any("Revisiones multilingües 2" in item.value for item in app.caption)
+    assert len(app.get("download_button")) == 1
+    assert "direct_review_state" in app.session_state["batch_results"].columns
+
+
+def test_direct_batch_fallback_renders_without_summary_schema_crash(monkeypatch):
+    app = _run_direct_batch(
+        monkeypatch,
+        StructuredReviewResult(None, "mock", "mock-v1", False, "timeout"),
+    )
+    assert any("Fallback local 2" in item.value for item in app.caption)
+    assert set(app.session_state["batch_results"]["direct_review_state"]) == {"direct_review_failed"}
+    assert len(app.get("download_button")) == 1
+
+
+@pytest.mark.parametrize(("hybrid", "multilingual"), [(False, False), (True, False), (False, True), (True, True)])
+def test_about_privacy_is_correct_for_direct_review_across_flag_combinations(monkeypatch, hybrid, multilingual):
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW", "true")
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT", str(hybrid))
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", str(multilingual))
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.radio[0].set_value(app.radio[0].options[-1]).run()
+    assert not app.exception
+    visible = " ".join(item.value for item in app.markdown).casefold()
+    assert "comentario anonimizado" in visible
+    assert "nunca otras columnas del csv" in visible
+    assert "original permanece en la aplicación" in visible
+    assert "proveedor externo" in visible
+    assert "informe ia agregado es una funcionalidad separada" in visible
+    assert "nunca se envían comentarios" not in visible
