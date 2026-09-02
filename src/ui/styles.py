@@ -212,6 +212,163 @@ def load_global_styles() -> None:
             color: var(--accent);
             border: 1px solid rgba(79, 70, 229, 0.15);
         }
+        /* Batch Upload Card */
+        .batch-upload-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 1.5rem 1.35rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1rem;
+        }
+        .batch-upload-title {
+            font-size: 1.35rem;
+            font-weight: 750;
+            color: var(--navy);
+            letter-spacing: -.02em;
+            margin: 0 0 .25rem;
+        }
+        .batch-upload-description {
+            font-size: .88rem;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0 0 .15rem;
+        }
+
+        /* Batch Privacy Callout */
+        .batch-privacy-callout {
+            display: flex;
+            align-items: flex-start;
+            gap: .6rem;
+            background: var(--accent-soft);
+            border: 1px solid rgba(79, 70, 229, .12);
+            border-radius: 10px;
+            padding: .65rem .9rem;
+            margin-top: .75rem;
+            font-size: .8rem;
+            color: var(--accent);
+            line-height: 1.45;
+        }
+        .batch-privacy-callout .privacy-icon {
+            flex-shrink: 0;
+            font-size: 1rem;
+            margin-top: .05rem;
+        }
+
+        /* Batch CSV Preview Summary */
+        .batch-csv-summary {
+            display: flex;
+            gap: .75rem;
+            flex-wrap: wrap;
+            margin-bottom: .75rem;
+        }
+        .batch-csv-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: .4rem .75rem;
+            font-size: .82rem;
+            color: var(--ink);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
+        }
+        .batch-csv-chip strong {
+            color: var(--navy);
+            font-weight: 700;
+        }
+
+        /* Batch Summary Band (post-processing) */
+        .batch-summary-band {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            flex-wrap: wrap;
+            background: #ECFDF3;
+            border: 1px solid #A6F4C5;
+            border-radius: 10px;
+            padding: .7rem 1rem;
+            margin: .75rem 0;
+            font-size: .85rem;
+            color: var(--positive);
+        }
+        .batch-summary-band .band-item {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+        }
+        .batch-summary-band .band-separator {
+            color: #A6F4C5;
+            font-weight: 300;
+        }
+        .batch-summary-band strong {
+            font-weight: 750;
+        }
+
+        /* Batch Section Header */
+        .batch-section-header {
+            margin: 1.5rem 0 .75rem;
+        }
+        .batch-section-header h3 {
+            font-size: 1.15rem;
+            font-weight: 750;
+            color: var(--navy);
+            margin: 0 0 .15rem;
+            letter-spacing: -.02em;
+        }
+        .batch-section-header p {
+            font-size: .85rem;
+            color: var(--muted);
+            margin: 0;
+            line-height: 1.45;
+        }
+
+        /* Batch KPI Row */
+        .batch-kpi-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: .65rem;
+            margin-bottom: 1rem;
+        }
+        .batch-kpi-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: .85rem 1rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+        .batch-kpi-label {
+            font-size: .72rem;
+            font-weight: 650;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--muted);
+            margin-bottom: .25rem;
+        }
+        .batch-kpi-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--navy);
+            letter-spacing: -.025em;
+            line-height: 1.2;
+        }
+        .batch-kpi-sub {
+            font-size: .75rem;
+            color: var(--muted);
+            margin-top: .15rem;
+        }
+        @media (max-width: 768px) {
+            .batch-kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .batch-kpi-row {
+                grid-template-columns: 1fr;
+            }
+        }
         </style>
         """,
         unsafe_allow_html=True,

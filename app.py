@@ -46,6 +46,11 @@ from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
 from src.ui import (
     load_global_styles,
+    render_batch_csv_preview,
+    render_batch_kpi_cards,
+    render_batch_results_header,
+    render_batch_summary_band,
+    render_batch_upload_empty,
     render_probability_chart,
     render_product_header,
     render_result_card,
@@ -174,9 +179,12 @@ def render_individual() -> None:
 
 def render_batch() -> None:
     st.header("Análisis masivo")
-    st.write("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
+    st.markdown("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
     if uploaded is None:
+        render_batch_upload_empty(
+            "El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras."
+        )
         st.info("El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras.")
         return
     try:
@@ -184,23 +192,25 @@ def render_batch() -> None:
     except CSVValidationError as exc:
         st.error(str(exc))
         return
-    st.success(f"CSV válido: {len(frame):,} registros y {len(frame.columns)} columnas detectadas.")
-    st.dataframe(frame.head(20), width="stretch", hide_index=True)
     column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
+    render_batch_csv_preview(len(frame), len(frame.columns), column)
+    st.dataframe(frame.head(20), width="stretch", hide_index=True)
     if st.button("Procesar comentarios", type="primary", width="stretch"):
         try:
             with st.spinner("Vectorizando y clasificando el lote…"):
                 results, dropped = analyze_dataframe(frame, column, get_predictor())
             st.session_state["batch_results"] = results
             st.session_state.pop("ai_report", None)
-            st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
+            render_batch_summary_band(len(results), dropped)
         except (CSVValidationError, ValueError) as exc:
             st.error(str(exc))
         except Exception:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
     if results is not None:
-        st.subheader("Resultados procesados")
+        render_batch_results_header()
+        metrics = calculate_metrics(results)
+        render_batch_kpi_cards(metrics)
         display = results.copy()
         percentage_columns = [column for column in display if column.startswith("probability_")]
         display["confidence"] = display["confidence"].map(lambda value: f"{value:.1%}")
@@ -378,28 +388,30 @@ def render_batch_controlled() -> None:
         return
     st.header("Análisis masivo")
     if direct_config.enabled:
-        st.write("Los textos no españoles o breves usan revisión multilingüe directa; no se traducen.")
+        st.markdown("Los textos no españoles o breves usan revisión multilingüe directa; no se traducen.")
     elif multilingual.enabled:
-        st.write("La detección local y la traducción controlada ocurren antes del análisis de sentimiento.")
+        st.markdown("La detección local y la traducción controlada ocurren antes del análisis de sentimiento.")
     else:
-        st.write("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
+        st.markdown("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
     if uploaded is None:
         if direct_config.enabled:
-            st.info("Sólo se envía el comentario anonimizado para las revisiones directas; no se envían otras columnas del CSV.")
+            privacy_msg = "Sólo se envía el comentario anonimizado para las revisiones directas; no se envían otras columnas del CSV."
         elif multilingual.enabled:
-            st.info("Los textos que requieren traducción se anonimizan antes de enviarse a Cerebras. Sólo se envía el comentario anonimizado, sin otras columnas; el original queda preservado en la app.")
+            privacy_msg = "Los textos que requieren traducción se anonimizan antes de enviarse a Cerebras. Sólo se envía el comentario anonimizado, sin otras columnas; el original queda preservado en la app."
         else:
-            st.info("Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV.")
+            privacy_msg = "Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV."
+        render_batch_upload_empty(privacy_msg)
+        st.info(privacy_msg)
         return
     try:
         frame = read_csv_upload(uploaded.getvalue())
     except CSVValidationError as exc:
         st.error(str(exc))
         return
-    st.success(f"CSV válido: {len(frame):,} registros y {len(frame.columns)} columnas detectadas.")
-    st.dataframe(frame.head(20), width="stretch", hide_index=True)
     column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
+    render_batch_csv_preview(len(frame), len(frame.columns), column)
+    st.dataframe(frame.head(20), width="stretch", hide_index=True)
     try:
         if direct_config.enabled:
             st.info(f"Límite total compartido de llamadas externas: {multilingual.max_external_calls_per_batch:,}. Las rutas directas consumen una llamada.")
@@ -478,7 +490,7 @@ def render_batch_controlled() -> None:
             )
             st.session_state.pop("hybrid_summary", None)
             st.session_state.pop("ai_report", None)
-            st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
+            render_batch_summary_band(len(results), dropped)
             if direct_config.enabled:
                 st.info(f"Llamadas externas consumidas: {summary['external_calls_used']:,} de {summary['external_call_limit']:,}; revisiones directas {summary['direct_reviews_attempted']:,}.")
             elif multilingual.enabled:
@@ -495,7 +507,9 @@ def render_batch_controlled() -> None:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
     if results is not None:
-        st.subheader("Resultados procesados")
+        render_batch_results_header()
+        metrics = calculate_metrics(results)
+        render_batch_kpi_cards(metrics)
         display = results.copy()
         if "review_state" in display:
             display["review_state"] = display["review_state"].map(REVIEW_STATE_LABELS).fillna("Estado desconocido")
