@@ -17,6 +17,12 @@
 - traducción se conserva como legacy experimental;
 - README y documentación reflejan la arquitectura v2 actual.
 
+### Fixed
+
+- trazabilidad batch direct deja de reutilizar un summary híbrido incompatible;
+- privacidad de la página Acerca del proyecto contempla direct review en todas las combinaciones de flags;
+- CI valida tests, cobertura, compilación y dependencias sin secrets.
+
 ### Security
 
 - servicios externos OFF por defecto;

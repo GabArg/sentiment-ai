@@ -12,12 +12,14 @@ Los tres flags son independientes y OFF por default. La matriz de ocho combinaci
 
 ## Tests y QA
 
-- 208 tests; cobertura `src` 90%.
+- 214 tests; cobertura `src` 90%.
 - `compileall`, `pip check`, `git diff --check`: OK.
 - AppTest: local, hybrid, traducción legacy, direct, fallback, dashboard, report y labels humanos.
 - Streamlit health: HTTP 200.
 - Batch: orden, schema local/hybrid/multilingual/direct, budget compartido, pacing, export y ausencia de campos sensibles.
 - No se hicieron llamadas reales en consolidación; se reutilizó la evidencia 3.5/3.5B.
+
+La revisión final añadió CI para PR/main y corrigió dos HIGH antes de merge: trazabilidad batch tipada por contrato y privacidad direct-only correcta. Ambos tienen AppTest end-to-end, incluido CSV/download y fallback.
 
 ## Dependencias
 
