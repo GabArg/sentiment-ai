@@ -1,0 +1,29 @@
+{
+  "requests": 15,
+  "provider_success": 15,
+  "http_429": 0,
+  "truncations": 0,
+  "schema_errors": 0,
+  "finish_reason": {
+    "stop": 15
+  },
+  "pacing_wait_seconds": 115.78099999998813,
+  "wall_clock_seconds": 129.43961450000643,
+  "latency_ms": {
+    "min": 766.1361000064062,
+    "median": 851.8919000052847,
+    "max": 1553.085400009877
+  },
+  "tokens": {
+    "input": 4200,
+    "output": 1047,
+    "total": 5247
+  },
+  "cost_usd": 0.00225525,
+  "cost_per_comment_usd": 0.00015035,
+  "safety_margin_seconds": 2.0,
+  "max_requests": 5,
+  "effective_window_seconds": 62.0,
+  "concurrent": false,
+  "gate_pass": true
+}
