@@ -2,6 +2,14 @@
 
 Sentiment AI es un dashboard de customer feedback que combina clasificación local, análisis masivo, métricas de negocio y revisiones de IA opcionales. La aplicación funciona en modo local por defecto; los servicios externos sólo se activan mediante flags o acciones explícitas.
 
+## Demo en vivo
+
+[Probar Sentiment AI v2](https://sentiment-ai-fu52eqobppy4baddnslh6c.streamlit.app)
+
+La demo pública permite probar análisis individual, procesamiento batch, dashboard, Pareto 80/20 e informe ejecutivo. Los servicios externos de IA se utilizan únicamente en las rutas configuradas y están sujetos a límites de disponibilidad y cuota.
+
+**Stack:** Python · Streamlit · scikit-learn · Pandas · Plotly · Cerebras
+
 ## Demo / qué resuelve
 
 La aplicación transforma comentarios individuales o archivos CSV en información útil para explorar la experiencia del cliente:
