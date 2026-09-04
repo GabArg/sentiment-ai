@@ -1,28 +1,270 @@
-# Sentiment AI
+<div align="center">
 
-Sentiment AI es un dashboard de customer feedback que combina clasificación local, análisis masivo, métricas de negocio y revisiones de IA opcionales. La aplicación funciona en modo local por defecto; los servicios externos sólo se activan mediante flags o acciones explícitas.
+# 🤖 Sentiment AI
 
-## Demo en vivo
+### Customer Feedback Analytics with Local NLP, Hybrid AI & Executive Reporting
 
-[Probar Sentiment AI v2](https://sentiment-ai-fu52eqobppy4baddnslh6c.streamlit.app)
+**Machine Learning · NLP · Streamlit · Cerebras · Business Analytics**
 
-La demo pública permite probar análisis individual, procesamiento batch, dashboard, Pareto 80/20 e informe ejecutivo. Los servicios externos de IA se utilizan únicamente en las rutas configuradas y están sujetos a límites de disponibilidad y cuota.
+[![Live App](https://img.shields.io/badge/🚀_LIVE_DEMO-OPEN_SENTIMENT_AI-6C63FF?style=for-the-badge)](https://sentiment-ai-fu52eqobppy4baddnslh6c.streamlit.app)
 
-**Stack:** Python · Streamlit · scikit-learn · Pandas · Plotly · Cerebras
+</div>
 
-## Demo / qué resuelve
+---
 
-La aplicación transforma comentarios individuales o archivos CSV en información útil para explorar la experiencia del cliente:
+## 🎯 Executive Summary
 
-- clasifica sentimientos con resultado y origen trazables;
-- procesa hasta 10.000 filas conservando el orden y permite exportarlas en UTF-8;
-- presenta distribución, confianza local y métricas de negocio;
-- identifica temas negativos y construye un Pareto 80/20;
-- genera un informe ejecutivo determinístico y, opcionalmente, una redacción asistida por IA.
+**Sentiment AI** turns raw customer comments into structured, business-oriented feedback intelligence.
 
-## Origen del proyecto
+The application combines a **local machine learning model** with optional AI-assisted review to analyze individual comments or CSV batches, surface negative themes, build Pareto views and generate executive summaries.
 
-Sentiment AI nació como **H12-25-L-Equipo-72**, un proyecto colaborativo de No Country. Los integrantes que participaron activamente en el proyecto fueron:
+The current portfolio version goes beyond simple sentiment classification: it adds **traceable routing, privacy-aware external calls, multilingual experimentation, batch analytics, fallbacks, testing and CI**.
+
+> **Core idea:** use deterministic local ML first, then escalate only uncertain cases to AI when explicitly enabled.
+
+---
+
+## 📊 Portfolio Highlights
+
+| Capability | Result |
+|---|---:|
+| 🧪 Automated tests | **214** |
+| ✅ Coverage on `src` | **90%** |
+| 📦 Batch processing | **Up to 10,000 rows** |
+| 🧠 Historical holdout | **~89.42%** |
+| 🔀 Hybrid manual benchmark | **59/60 · 98.33%** |
+| 🌍 Direct multilingual sample | **47/48 · 97.92%** |
+| 🚦 Pacing test | **15/15 success · 0 HTTP 429** |
+
+> These evaluations measure different things and are **not directly interchangeable**.  
+> The hybrid and multilingual results come from small, curated manual benchmarks and are not presented as general production accuracy.
+
+---
+
+## 🧩 What the Product Does
+
+Sentiment AI transforms individual comments or CSV files into usable customer-feedback signals.
+
+- Classifies sentiment with **traceable result origin**.
+- Processes batches of up to **10,000 rows** while preserving row order.
+- Calculates local-model confidence and business-facing metrics.
+- Identifies recurring negative themes.
+- Builds a **Pareto 80/20** view of negative feedback.
+- Generates deterministic executive reports.
+- Optionally enriches selected cases with AI-assisted review.
+- Supports experimental direct multilingual review for **Spanish, English, Portuguese and Italian**.
+- Exports processed results in UTF-8.
+
+---
+
+## 🧠 Hybrid ML + AI Strategy
+
+The architecture is intentionally conservative.
+
+### Local first
+
+Long Spanish-language comments are analyzed locally with:
+
+```text
+TF-IDF
+   ↓
+Logistic Regression
+   ↓
+Sentiment + confidence
+```
+
+### Escalate only when needed
+
+When hybrid mode is enabled, uncertain cases can be routed to external AI review.
+
+```text
+Local model
+    ↓
+Routing rules
+    ↓
+High confidence ──────────────→ keep local result
+    ↓
+Uncertain case
+    ↓
+Optional AI review
+    ↓
+Structured result + traceable origin
+```
+
+External services are **OFF by default**.
+
+This keeps the local pipeline usable without an external dependency while allowing AI to act as a selective second layer rather than replacing the entire system.
+
+---
+
+## 🏗️ Architecture
+
+```text
+Comment / CSV
+      ↓
+Validation & preprocessing
+      ↓
+┌──────────────────────────────────────────────┐
+│ Routing                                      │
+├──────────────────────────────────────────────┤
+│ Long Spanish text → local TF-IDF + LR       │
+│ EN / PT / IT → optional structured review   │
+│ Very short text → uncertain-text route       │
+│ External failure → observable local fallback │
+└──────────────────────────────────────────────┘
+      ↓
+Sentiment results
+      ↓
+Analytics Dashboard
+      ↓
+Negative Themes + Pareto 80/20
+      ↓
+Executive Report
+      ↓
+Exports
+```
+
+More detail is available in [`docs/architecture.md`](docs/architecture.md) and [`ADR 001`](docs/adr/001-direct-multilingual-review.md).
+
+---
+
+## 🧪 Model & Validation
+
+The portfolio version recovers and uses the historical **TF-IDF + Logistic Regression** model artifacts while adding a stronger evaluation and operational layer around them.
+
+| Evaluation | Result | Scope |
+|---|---:|---|
+| Historical reconstructed holdout | **~89.42%** | Historical corpus; model not retrained in v2 |
+| Local manual baseline | **31/60 · 51.67%** | Targeted external benchmark; weak on neutral cases |
+| Hybrid manual benchmark | **59/60 · 98.33%** | Same small benchmark; AI used only on routed cases |
+| Direct multilingual sample | **47/48 · 97.92%** | Curated ES/EN/PT/IT sample |
+| Pacing test | **15/15 · 0 HTTP 429** | Operational stability test, not accuracy |
+
+### What the evaluation revealed
+
+The local model is useful but has clear domain limitations, especially for **neutral and ambiguous comments**.
+
+That limitation motivated the hybrid design:
+
+- keep confident local decisions local,
+- route only selected uncertain cases,
+- preserve the original result source,
+- avoid presenting AI-assisted results as if they came from the local classifier.
+
+Full experiment records are available in [`docs/experiments/README.md`](docs/experiments/README.md).
+
+---
+
+## 📈 Business Analytics Layer
+
+The project is not limited to prediction.
+
+The dashboard turns classified feedback into analysis that is closer to how a business user would consume it.
+
+### Available views
+
+- sentiment distribution,
+- confidence distribution,
+- negative-comment concentration,
+- recurring negative themes,
+- Pareto 80/20,
+- batch-level business metrics,
+- executive reporting,
+- exportable processed datasets.
+
+The goal is to move from:
+
+```text
+"This comment is negative"
+```
+
+to:
+
+```text
+"What are customers complaining about most,
+how concentrated is the problem,
+and what should a decision-maker inspect first?"
+```
+
+---
+
+## 🌍 Experimental Multilingual Review
+
+The modern multilingual route supports structured review for:
+
+- 🇪🇸 Spanish
+- 🇬🇧 English
+- 🇵🇹 Portuguese
+- 🇮🇹 Italian
+
+Instead of translating every comment into Spanish first, the current candidate architecture can send the anonymized comment directly to a structured external review.
+
+This reduces unnecessary transformation steps and preserves more of the original wording.
+
+The multilingual feature remains **experimental**. Validation has been performed on small curated samples, not on a broad production benchmark.
+
+---
+
+## 🔐 Privacy & Responsible AI
+
+External AI use is designed to be explicit and minimized.
+
+- AI-related flags are **OFF by default**.
+- External review receives only the **anonymized comment**.
+- Full rows and unrelated business columns are not sent.
+- Local confidence and expected labels are not exposed to the external model.
+- Executive AI reporting receives minimized aggregate information.
+- External failures use observable fallbacks.
+- Request budgets and pacing rules reduce uncontrolled external usage.
+
+Anonymization reduces exposure risk but **does not guarantee complete de-identification** of free-form text.
+
+See [`docs/privacy.md`](docs/privacy.md).
+
+---
+
+## 🛡️ Engineering Quality
+
+The portfolio evolution adds an engineering layer that was not present in the original prototype.
+
+- **214 automated tests**
+- **90% coverage** on `src`
+- GitHub Actions CI on pull requests and `main`
+- `compileall` validation
+- `pip check`
+- explicit external-service fallbacks
+- separation between local inference and external services
+- external flags OFF by default
+- traceable routing and review states
+- shared pacing and request budgets
+
+---
+
+## 🛠️ Tech Stack
+
+<p>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
+  <img src="https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white">
+  <img src="https://img.shields.io/badge/scikit--learn-ML-F7931E?logo=scikitlearn&logoColor=white">
+  <img src="https://img.shields.io/badge/Pandas-Data-150458?logo=pandas&logoColor=white">
+  <img src="https://img.shields.io/badge/Plotly-Analytics-3F4F75?logo=plotly&logoColor=white">
+  <img src="https://img.shields.io/badge/Cerebras-AI-222222">
+  <img src="https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white">
+</p>
+
+**Methods:** NLP · TF-IDF · Logistic Regression · Hybrid AI Routing · Structured Outputs · Business Analytics · Pareto Analysis
+
+---
+
+## 📦 Project Evolution & Attribution
+
+Sentiment AI has **two clearly separated stages**.
+
+### 1. Original collaborative project
+
+The project began as **H12-25-L-Equipo-72**, a No Country collaborative project.
+
+Active contributors included:
 
 - Carlos Mauricio Rondón
 - Juan Carlos Vanegas Molina
@@ -30,130 +272,155 @@ Sentiment AI nació como **H12-25-L-Equipo-72**, un proyecto colaborativo de No 
 - Neldy Rolando Velásquez Samolo
 - José Julián Gómez Brizuela
 
-El modelo original, sus artefactos y las primeras implementaciones surgieron del trabajo grupal. El proyecto histórico incluyó una arquitectura con FastAPI/OCI, frontend web, análisis de sentimiento y capacidades documentadas de traducción y revisión con Cerebras. No se presenta ese trabajo como creación exclusiva de una sola persona.
+The original model artifacts and early implementation emerged from that group effort.
 
-La procedencia técnica, los repositorios históricos y el alcance de las contribuciones están documentados en [ATTRIBUTION.md](ATTRIBUTION.md).
+The historical project included FastAPI/OCI integration, a web frontend, sentiment analysis and documented translation/review capabilities using Cerebras.
 
-## Evolución para portfolio
+### 2. Portfolio evolution
 
-A partir de esa base histórica, retomé el proyecto, recuperé una versión reproducible del modelo y desarrollé una evolución técnica orientada a portfolio, analítica de negocio, confiabilidad y uso responsable de IA.
+The current repository was later recovered and expanded into a more complete portfolio-oriented version.
 
-Esta evolución posterior incorporó:
+This later evolution added:
 
-- recuperación reproducible de los artefactos TF-IDF + LogisticRegression;
-- inferencia local y arquitectura modular;
-- análisis individual y procesamiento batch de archivos CSV;
-- dashboard de analytics y métricas de negocio;
-- extracción de temas negativos y Pareto 80/20;
-- informe ejecutivo determinístico y redacción IA opcional;
-- revisión híbrida opt-in para casos derivados por un router auditable;
-- evaluación del modelo local y benchmark manual versionado;
-- arquitectura multilingüe experimental;
-- direct structured review para ES/EN/PT/IT mediante Structured Outputs y JSON Schema;
-- anonimización, minimización de datos y fallback observable;
-- límites de presupuesto, control de rate limits y pacing compartido;
-- tests automatizados, GitHub Actions CI y documentación técnica;
-- preparación y publicación de la release candidate `v2.0.0-rc1`.
+- reproducible recovery of TF-IDF + Logistic Regression artifacts,
+- modular local inference,
+- individual and batch analysis,
+- analytics dashboard,
+- negative-theme extraction,
+- Pareto 80/20,
+- deterministic executive reports,
+- optional AI-assisted reporting,
+- hybrid routing,
+- model evaluation,
+- versioned manual benchmarks,
+- experimental multilingual review,
+- anonymization and data minimization,
+- external-call budgets and pacing,
+- automated tests,
+- CI,
+- technical documentation,
+- release-candidate preparation.
 
-El soporte multilingüe sigue siendo experimental: fue validado sobre muestras pequeñas y curadas, no como una capacidad productiva general.
+Full provenance and contribution details are documented in [`ATTRIBUTION.md`](ATTRIBUTION.md).
 
-## Resultados y validación
+---
 
-| Evaluación | Resultado | Alcance |
-|---|---:|---|
-| holdout histórico reconstruido | ~89.42% | corpus histórico; no reentrenado en v2 |
-| baseline local manual | 31/60, 51.67% | benchmark dirigido externo; neutral débil |
-| hybrid manual | 59/60, 98.33% | mismo benchmark pequeño; Cerebras sólo en derivados |
-| multilingüe directo | 47/48, 97.92% | muestra curada ES/EN/PT/IT; no benchmark general |
-| pacing endurecido | 15/15 success, 0 HTTP 429 | prueba operativa separada; no mide accuracy |
+## ▶️ Run Locally
 
-Estas métricas corresponden a evaluaciones distintas, no son intercambiables y no representan rendimiento productivo. Los experimentos completos están indexados en [docs/experiments/README.md](docs/experiments/README.md).
-
-## Arquitectura
-
-```text
-texto / CSV → validación
-├─ español largo → TF-IDF + LogisticRegression → hybrid opcional
-├─ EN/PT/IT largo → direct structured review opcional
-├─ <=4 tokens → short_text_uncertain → direct review opcional
-└─ errores externos → fallback local observable
-
-resultados → dashboard → temas/Pareto → informe → exports
-```
-
-La ruta recomendada para textos no españoles es una sola llamada estructurada sobre el comentario anonimizado. La traducción previa a español permanece disponible como ruta legacy/experimental por fidelidad histórica. Más detalles: [arquitectura](docs/architecture.md) y [ADR 001](docs/adr/001-direct-multilingual-review.md).
-
-## Privacidad
-
-Los flags están OFF por defecto. Cuando hay revisión o traducción externa se envía sólo el comentario anonimizado, sin expected, confianza local, fila completa ni columnas de negocio. El informe IA recibe únicamente agregados minimizados. La anonimización reduce el riesgo, pero no garantiza la desidentificación de nombres o contexto libre. Véase [docs/privacy.md](docs/privacy.md).
-
-## Calidad de ingeniería
-
-- 214 tests automatizados;
-- 90% de cobertura sobre `src`;
-- GitHub Actions CI para pull requests y `main`;
-- validaciones con `compileall` y `pip check`;
-- fallbacks explícitos ante errores externos;
-- separación entre inferencia local y servicios externos;
-- flags externos OFF por defecto;
-- trazabilidad de rutas, budgets y estados de revisión.
-
-## Instalación
-
-Requiere Python 3.12.
+Requires Python 3.12.
 
 ```bash
 git clone https://github.com/GabArg/sentiment-ai.git
 cd sentiment-ai
+
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
+source .venv/bin/activate
+
 pip install -r requirements.txt
+
 streamlit run app.py
 ```
 
-## Configuración
+---
 
-Copiá `.streamlit/secrets.toml.example` como `.streamlit/secrets.toml` o usá variables de entorno. Nunca versiones el archivo real.
+## ⚙️ Configuration
+
+Copy:
+
+```text
+.streamlit/secrets.toml.example
+```
+
+to:
+
+```text
+.streamlit/secrets.toml
+```
+
+or use environment variables.
+
+Never commit the real secrets file.
+
+Example:
 
 ```toml
 CEREBRAS_API_KEY = "..."
 
 ENABLE_HYBRID_SENTIMENT = false
-ENABLE_MULTILINGUAL_SENTIMENT = false       # traducción legacy
-ENABLE_DIRECT_MULTILINGUAL_REVIEW = false   # ruta moderna candidata
+ENABLE_MULTILINGUAL_SENTIMENT = false
+ENABLE_DIRECT_MULTILINGUAL_REVIEW = false
 
 HYBRID_THRESHOLD_NEGATIVE = 0.80
 HYBRID_THRESHOLD_NEUTRAL = 0.65
 HYBRID_THRESHOLD_POSITIVE = 0.80
+
 HYBRID_MAX_EXTERNAL_CALLS_PER_BATCH = 25
 HYBRID_MAX_REQUESTS = 5
 HYBRID_WINDOW_SECONDS = 60
+
 EXTERNAL_RATE_LIMIT_SAFETY_SECONDS = 2.0
 ```
 
-Configurar la API key no activa ningún modo. El informe IA se genera sólo al pulsar su botón. La tabla completa de precedencia y aliases está en [docs/architecture.md](docs/architecture.md).
+Setting the API key **does not automatically enable AI modes**.
 
-## Testing
+---
+
+## ✅ Testing
 
 ```bash
 pip install -r requirements-dev.txt
+
 pytest --cov=src --cov-report=term-missing
+
 python -m compileall app.py src scripts tests
+
 python -m pip check
 ```
 
-## Limitaciones
+---
 
-- El modelo local fue entrenado históricamente y falla especialmente en neutrales fuera de dominio.
-- El benchmark multilingüe es pequeño, manual y limitado a ES/EN/PT/IT.
-- Los textos breves no usan detección de idioma; se marcan como inciertos.
-- Los modos externos dependen de disponibilidad, cuota, costo y límites de Cerebras.
-- El Free Tier configurado para la demo usa pacing conservador y puede hacer lento un batch.
-- Los temas negativos son señales léxicas, no causas de negocio inferidas.
+## ⚠️ Limitations
 
-## Historia y créditos
+- The local model was trained historically and performs poorly on some out-of-domain neutral cases.
+- The multilingual benchmark is small and manually curated.
+- Very short comments are treated as uncertain rather than confidently language-detected.
+- External modes depend on Cerebras availability, quotas, cost and rate limits.
+- Conservative pacing may make some public-demo batches slower.
+- Negative-theme extraction is lexical and should not be interpreted as causal business analysis.
+- Hybrid benchmark results should not be generalized beyond the evaluated sample.
 
-Sentiment AI tiene dos etapas claramente diferenciadas: el proyecto grupal original de No Country y la recuperación/evolución v2 desarrollada posteriormente en este repositorio. La autoría de ambas etapas se documenta por separado para preservar correctamente la procedencia del trabajo.
+---
 
-Los créditos completos, las fuentes históricas y el detalle de la evolución están en [ATTRIBUTION.md](ATTRIBUTION.md). El proyecto se distribuye bajo [GPL-3.0](LICENSE).
+## 🚀 Potential Next Steps
+
+- Build a larger multilingual evaluation set.
+- Re-train or replace the historical local classifier with a stronger benchmarked model.
+- Add stronger topic clustering beyond lexical negative themes.
+- Introduce drift and confidence monitoring.
+- Add human-review queues for uncertain cases.
+- Improve multilingual short-text handling.
+- Add model cards and dataset documentation.
+- Compare local classical ML against transformer-based baselines.
+
+---
+
+## 👤 Portfolio Author
+
+**Guido Arturo Broccoli**
+
+[LinkedIn](https://www.linkedin.com/in/guido-a-broccoli) ·
+[GitHub](https://github.com/GabArg) ·
+[Repository](https://github.com/GabArg/sentiment-ai)
+
+---
+
+## 📄 License
+
+This repository is distributed under the [GPL-3.0 License](LICENSE).
+
+Original collaborative work and later portfolio evolution are documented separately in [`ATTRIBUTION.md`](ATTRIBUTION.md).
