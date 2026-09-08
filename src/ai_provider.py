@@ -102,7 +102,7 @@ def generate_cerebras_report(
     try:
         return parse_assisted_reading(content, facts)
     except ReportContractError as exc:
-        raise _normalized_error("contract_validation", "contract_response_rejected", exc) from exc
+        raise _normalized_error("contract_validation", exc.code, exc) from exc
     except Exception as exc:
         raise _normalized_error("contract_validation", "contract_validation_failed", exc) from exc
 

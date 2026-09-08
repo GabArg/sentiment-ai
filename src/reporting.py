@@ -24,9 +24,14 @@ Respondé únicamente con un objeto JSON, sin Markdown ni texto adicional, con e
 schema_version, interpretations, hypotheses, recommendation_ids, evidence_needed_ids, insufficient_evidence_ids.
 
 Reglas:
+- Copiá schema_version exactamente desde CONTEXTO.contract.schema_version.
+- Incluí todos y sólo los campos obligatorios de CONTEXTO.contract.response; no agregues campos.
 - Usá solamente identificadores elegibles incluidos en CONTEXTO.contract.
-- Cada interpretación contiene sólo interpretation_id y fact_refs.
-- Cada hipótesis contiene sólo hypothesis_id, fact_refs y validation_needed_id.
+- Para cada interpretación, usá sólo interpretation_id y fact_refs, y elegí sus fact_refs del mapa CONTEXTO.contract.interpretations.
+- Para cada hipótesis, usá sólo hypothesis_id, fact_refs y validation_needed_id; elegí fact_refs y validation_needed_id del mapa CONTEXTO.contract.hypotheses.
+- Respetá todos los máximos de CONTEXTO.contract.limits.
+- No repitas IDs ni elementos en ninguna lista.
+- Podés devolver cualquier lista vacía cuando no exista evidencia suficiente para seleccionar una opción válida.
 - No generes texto libre. Todo el contenido visible pertenece a catálogos locales versionados.
 - No calcules, combines, reformules ni repitas valores. La aplicación renderiza todos los hechos localmente.
 - Los n-gramas son señales léxicas, no categorías ni causas.
