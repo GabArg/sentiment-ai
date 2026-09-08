@@ -32,6 +32,11 @@ from .pareto_view import (
     render_pareto_summary,
     render_priority_ranking,
 )
+from .individual import (
+    render_individual_empty_state,
+    render_individual_intro,
+    render_individual_result_heading,
+)
 from .report_view import (
     parse_report_sections,
     render_ai_report_intro,
@@ -64,6 +69,9 @@ __all__ = [
     "render_dashboard_kpis",
     "render_dataset_reading",
     "render_deterministic_brief",
+    "render_individual_empty_state",
+    "render_individual_intro",
+    "render_individual_result_heading",
     "render_panel_heading",
     "render_pareto_detail_table",
     "render_pareto_methodology",

@@ -6,6 +6,8 @@ import html
 
 import streamlit as st
 
+from .html import render_html
+
 
 def render_product_header() -> None:
     """Render the compact global product header."""
@@ -63,14 +65,13 @@ def render_result_card(
         "Negativo": "badge-negative",
         "Neutro": "badge-neutral",
     }.get(final_prediction, "badge-neutral")
-    st.markdown(
+    render_html(
         f"""
-        <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; flex-wrap:wrap;">
-            <span class="sentiment-badge {badge_style}">{final_prediction}</span>
-            <span class="origin-badge">{origin}</span>
+        <div class="individual-result-badges">
+            <span class="sentiment-badge {badge_style}">{html.escape(final_prediction)}</span>
+            <span class="origin-badge">{html.escape(origin)}</span>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
     st.metric("Resultado final", final_prediction)
     st.metric(
@@ -80,7 +81,7 @@ def render_result_card(
     )
     st.caption(f"Origen: {origin}")
     if state_label is not None:
-        st.markdown(f"**Estado:** {state_label}")
+        st.markdown(f"**Estado:** {html.escape(state_label)}")
 
 
 def render_batch_upload_empty(privacy_message: str) -> None:

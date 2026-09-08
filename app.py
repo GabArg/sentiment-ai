@@ -58,6 +58,9 @@ from src.ui import (
     render_dashboard_kpis,
     render_dataset_reading,
     render_deterministic_brief,
+    render_individual_empty_state,
+    render_individual_intro,
+    render_individual_result_heading,
     render_panel_heading,
     render_pareto_detail_table,
     render_pareto_methodology,
@@ -155,41 +158,50 @@ def render_metric_cards(metrics: dict[str, object]) -> None:
 
 
 def render_individual() -> None:
-    st.write("Clasificá una opinión con el modelo local y revisá la probabilidad de cada clase aprendida.")
-    st.caption("Procesamiento local-first: inferencia determinística en la sesión con modelo empaquetado.")
-    with st.form("individual_form"):
-        text = st.text_area(
-            "Comentario",
-            max_chars=MAX_TEXT_LENGTH,
-            height=160,
-            placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
+    context, entry = st.columns([0.72, 1.28], gap="medium")
+    with context:
+        render_individual_intro(
+            "Clasificá una opinión con el modelo local y revisá la probabilidad de cada clase aprendida.",
+            "Procesamiento local-first: inferencia determinística en la sesión con modelo empaquetado.",
         )
-        submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
-    if submitted:
-        if len(text.strip()) < 2:
-            st.warning("Ingresá un texto de al menos 2 caracteres.")
-            return
-        try:
-            prediction = get_predictor().predict_one(text)
-        except Exception:
-            st.error("No fue posible analizar el texto con los artefactos locales.")
-            return
-        left, right = st.columns([1, 1.2])
-        with left:
-            render_result_card(
-                prediction.label,
-                prediction.confidence,
-                "Modelo local",
-                confidence_help="Estimación interna del clasificador local. No representa una garantía de corrección.",
+    with entry:
+        with st.form("individual_form"):
+            text = st.text_area(
+                "Comentario",
+                max_chars=MAX_TEXT_LENGTH,
+                height=160,
+                placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
             )
-        with right:
+            submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
+    if not submitted:
+        render_individual_empty_state()
+        return
+    if len(text.strip()) < 2:
+        st.warning("Ingresá un texto de al menos 2 caracteres.")
+        return
+    try:
+        prediction = get_predictor().predict_one(text)
+    except Exception:
+        st.error("No fue posible analizar el texto con los artefactos locales.")
+        return
+    render_individual_result_heading()
+    left, right = st.columns([1, 1.2], gap="medium")
+    with left:
+        render_result_card(
+            prediction.label,
+            prediction.confidence,
+            "Modelo local",
+            confidence_help="Estimación interna del clasificador local. No representa una garantía de corrección.",
+        )
+    with right:
+        with st.container(border=True):
             st.subheader("Probabilidades del modelo local")
             render_probability_chart(prediction.probabilities)
-        st.caption("La confianza mostrada es una estimación interna del modelo local, no una garantía de corrección.")
-        with st.expander("Traza técnica"):
-            st.write(f"Predicción local: **{prediction.label}**")
-            st.write(f"Confianza local: **{prediction.confidence:.1%}**")
-            st.write("Origen: **Modelo local**")
+    st.caption("La confianza mostrada es una estimación interna del modelo local, no una garantía de corrección.")
+    with st.expander("Traza técnica"):
+        st.write(f"Predicción local: **{prediction.label}**")
+        st.write(f"Confianza local: **{prediction.confidence:.1%}**")
+        st.write("Origen: **Modelo local**")
 
 
 def render_batch() -> None:
@@ -249,22 +261,28 @@ def render_individual_controlled() -> None:
         render_individual()
         return
     if direct_config.enabled:
-        st.write("Los textos no españoles o breves pueden recibir una revisión multilingüe directa sobre el comentario anonimizado.")
+        description = "Los textos no españoles o breves pueden recibir una revisión multilingüe directa sobre el comentario anonimizado."
+        detail = "Procesamiento local-first: la inferencia inicial siempre se evalúa localmente."
     elif multilingual.enabled:
-        st.write("El idioma se detecta localmente. Los textos que requieren traducción se anonimizan antes de enviarse al proveedor externo.")
-        st.caption("La detección puede ser menos fiable en textos breves o ambiguos.")
+        description = "El idioma se detecta localmente. Los textos que requieren traducción se anonimizan antes de enviarse al proveedor externo."
+        detail = "Procesamiento local-first. La detección puede ser menos fiable en textos breves o ambiguos."
     else:
-        st.write("La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado.")
-    st.caption("Procesamiento local-first: la inferencia inicial siempre se evalúa localmente.")
-    with st.form("individual_form"):
-        text = st.text_area(
-            "Comentario",
-            max_chars=MAX_TEXT_LENGTH,
-            height=160,
-            placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
-        )
-        submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
+        description = "La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado."
+        detail = "Procesamiento local-first: la inferencia inicial siempre se evalúa localmente."
+    context, entry = st.columns([0.72, 1.28], gap="medium")
+    with context:
+        render_individual_intro(description, detail)
+    with entry:
+        with st.form("individual_form"):
+            text = st.text_area(
+                "Comentario",
+                max_chars=MAX_TEXT_LENGTH,
+                height=160,
+                placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
+            )
+            submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
     if not submitted:
+        render_individual_empty_state()
         return
     if len(text.strip()) < 2:
         st.warning("Ingresá un texto de al menos 2 caracteres.")
@@ -310,6 +328,7 @@ def render_individual_controlled() -> None:
     except Exception:
         st.error("No fue posible analizar el texto con los artefactos locales.")
         return
+    render_individual_result_heading()
     if direct_result is not None and direct_result.direct_review_requested:
         left, right = st.columns([1, 1.2])
         with left:
@@ -330,8 +349,9 @@ def render_individual_controlled() -> None:
             else:
                 st.warning("Revisión externa no disponible; se utilizó el fallback local.")
         with right:
-            st.subheader("Probabilidades del modelo local")
-            render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
+            with st.container(border=True):
+                st.subheader("Probabilidades del modelo local")
+                render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
         with st.expander("Detalle técnico de revisión"):
             st.write(f"Predicción local: **{prediction.label}**")
             st.write(f"Confianza local: **{prediction.confidence:.1%}**")
@@ -361,9 +381,10 @@ def render_individual_controlled() -> None:
         elif result.review_state == "fallback_local":
             st.warning("La revisión externa no estuvo disponible; se conserva la clasificación local.")
     with right:
-        st.subheader("Probabilidades del modelo local")
-        st.caption("Distribución previa al second check")
-        render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
+        with st.container(border=True):
+            st.subheader("Probabilidades del modelo local")
+            st.caption("Distribución previa al second check")
+            render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
     st.caption("La confianza mostrada es una estimación interna del modelo local; no representa confianza del resultado híbrido.")
     if preparation is not None:
         language_label = preparation.language_name or preparation.detected_language or "No determinado"

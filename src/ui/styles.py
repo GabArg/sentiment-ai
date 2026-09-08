@@ -680,6 +680,47 @@ def load_global_styles() -> None:
             .report-ai-meta { grid-template-columns:1fr; }
             .report-ai-meta > b { justify-self:start; }
         }
+
+        /* Individual analysis workspace */
+        .individual-intro {
+            height:100%; min-height:13.4rem; padding:1.15rem 1.2rem;
+            border:1px solid var(--line); border-radius:var(--radius); background:var(--surface);
+            box-shadow:var(--shadow);
+        }
+        .individual-intro > span,.individual-result-heading > span {
+            display:block; color:var(--positive); font-size:.58rem; font-weight:800;
+            letter-spacing:.13em; text-transform:uppercase; margin-bottom:.25rem;
+        }
+        .individual-intro h3,.individual-result-heading h3 {
+            color:var(--navy); font-size:1.05rem; margin:0; letter-spacing:-.025em;
+        }
+        .individual-intro > p { color:var(--muted); font-size:.68rem; line-height:1.55; margin:.6rem 0 1rem; }
+        .individual-intro > div {
+            display:flex; align-items:flex-start; gap:.5rem; padding:.7rem;
+            border-radius:9px; background:var(--accent-soft); color:#416B5D;
+        }
+        .individual-intro > div i { color:var(--positive); font-style:normal; }
+        .individual-intro > div small { font-size:.58rem; line-height:1.45; }
+        .individual-empty {
+            display:flex; align-items:center; justify-content:center; gap:.9rem; min-height:11rem;
+            padding:1.5rem; margin-top:.9rem; border:1px dashed #BDC9C7;
+            border-radius:var(--radius); background:rgba(255,255,255,.55);
+        }
+        .individual-empty > div {
+            display:grid; place-items:center; flex:0 0 auto; width:2.8rem; height:2.8rem;
+            border-radius:12px; background:var(--accent-soft); color:var(--positive); font-size:1.15rem;
+        }
+        .individual-empty strong { color:var(--navy); font-size:.8rem; }
+        .individual-empty p { max-width:34rem; color:var(--muted); font-size:.62rem; line-height:1.5; margin:.25rem 0 0; }
+        .individual-result-heading { margin:1.4rem 0 .8rem; }
+        .individual-result-heading p { color:var(--muted); font-size:.64rem; margin:.28rem 0 0; }
+        .individual-result-badges {
+            display:flex; align-items:center; gap:.4rem; margin-bottom:.45rem; flex-wrap:wrap;
+        }
+        @media (max-width: 650px) {
+            .individual-intro { min-height:auto; }
+            .individual-empty { flex-direction:column; text-align:center; }
+        }
         </style>
         """,
         unsafe_allow_html=True,

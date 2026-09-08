@@ -65,6 +65,7 @@ def _run_hybrid_case(monkeypatch, text, review_result):
 def test_app_starts_and_individual_analysis_works():
     app = AppTest.from_file("../app.py", default_timeout=20).run()
     assert not app.exception
+    assert any("El resultado aparecerá acá" in item.value for item in app.markdown)
 
     app.text_area[0].set_value("La atención fue excelente y llegó a tiempo.")
     app.button[0].click().run()
