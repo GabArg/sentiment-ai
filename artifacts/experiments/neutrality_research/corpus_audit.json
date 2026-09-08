@@ -1,0 +1,744 @@
+{
+  "sources": {
+    "corpus": "dataset_unificado.csv",
+    "corpus_sha256": "9a3ad11f4f1ea0a4994deff7cf43a0570afa5b59a713084e0f2190aa8becf636",
+    "raw_synthetic": "DB_amazon_multilingual_v6.csv",
+    "raw_synthetic_sha256": "12a187a041bdccd0b74a07dec1087c157ce4e09727d88f874d29e06f7fc2208d"
+  },
+  "rows": 25188,
+  "class_distribution": {
+    "Positivo": 9821,
+    "Negativo": 9507,
+    "Neutro": 5860
+  },
+  "source_distribution": {
+    "DB_amazon_multilingual_v6.csv": 16812,
+    "DB_archivo_con_sentimiento.csv": 5243,
+    "intertass_2017": 3033,
+    "datosjc": 100
+  },
+  "neutral_by_source": {
+    "DB_amazon_multilingual_v6.csv": 4437,
+    "intertass_2017": 1011,
+    "DB_archivo_con_sentimiento.csv": 378,
+    "datosjc": 34
+  },
+  "exact_duplicate_texts_processed": 0,
+  "duplicates_after_historical_clean": 2177,
+  "conflicting_normalized_text_groups": 1,
+  "raw_synthetic_rows": 25000,
+  "raw_synthetic_exact_duplicates": 8188,
+  "random_split_test_rows_sharing_sentence_with_train": 3382,
+  "random_split_test_share_percentage": 67.12981341802302,
+  "split_note": "Diagnostic reconstruction using random_state=42; shared generated segments are leakage risk, not proof of label leakage.",
+  "model": {
+    "classes": [
+      "Negativo",
+      "Neutro",
+      "Positivo"
+    ],
+    "params": {
+      "C": "1.0",
+      "class_weight": "balanced",
+      "dual": "False",
+      "fit_intercept": "True",
+      "intercept_scaling": "1",
+      "l1_ratio": "0.0",
+      "max_iter": "1000",
+      "n_jobs": "None",
+      "penalty": "deprecated",
+      "random_state": "42",
+      "solver": "newton-cg",
+      "tol": "0.0001",
+      "verbose": "0",
+      "warm_start": "False"
+    },
+    "features": 5000
+  },
+  "vectorizer": {
+    "analyzer": "word",
+    "binary": "False",
+    "decode_error": "strict",
+    "dtype": "<class 'numpy.float64'>",
+    "encoding": "utf-8",
+    "input": "content",
+    "lowercase": "True",
+    "max_df": "0.9",
+    "max_features": "5000",
+    "min_df": "3",
+    "ngram_range": "(1, 2)",
+    "norm": "l2",
+    "preprocessor": "None",
+    "smooth_idf": "True",
+    "stop_words": "None",
+    "strip_accents": "None",
+    "sublinear_tf": "False",
+    "token_pattern": "(?u)\\b\\w\\w+\\b",
+    "tokenizer": "None",
+    "use_idf": "True",
+    "vocabulary": "None"
+  },
+  "top_coefficients": {
+    "Negativo": {
+      "highest": [
+        {
+          "feature": "no",
+          "weight": 5.843097833086787
+        },
+        {
+          "feature": "pequeño",
+          "weight": 2.615414029976019
+        },
+        {
+          "feature": "peor",
+          "weight": 2.3946102052993816
+        },
+        {
+          "feature": "tamaño",
+          "weight": 2.315234766324273
+        },
+        {
+          "feature": "mala",
+          "weight": 2.2673209217301484
+        },
+        {
+          "feature": "triste",
+          "weight": 2.1580524836612773
+        },
+        {
+          "feature": "no funciona",
+          "weight": 2.0161956693962373
+        },
+        {
+          "feature": "feo",
+          "weight": 2.003847894495609
+        },
+        {
+          "feature": "roto",
+          "weight": 1.951170472862556
+        },
+        {
+          "feature": "rota",
+          "weight": 1.8980601325616664
+        },
+        {
+          "feature": "problema",
+          "weight": 1.7976203715919141
+        },
+        {
+          "feature": "se",
+          "weight": 1.7230222354553661
+        },
+        {
+          "feature": "nada",
+          "weight": 1.68924168125806
+        },
+        {
+          "feature": "pobre",
+          "weight": 1.6857202606904966
+        },
+        {
+          "feature": "pequeños",
+          "weight": 1.680755618280016
+        },
+        {
+          "feature": "mal",
+          "weight": 1.6157727046621546
+        },
+        {
+          "feature": "nunca",
+          "weight": 1.570921587373403
+        },
+        {
+          "feature": "otra",
+          "weight": 1.5583171258155324
+        },
+        {
+          "feature": "rompió",
+          "weight": 1.555793319538982
+        },
+        {
+          "feature": "devolución",
+          "weight": 1.5531581772788057
+        },
+        {
+          "feature": "puta",
+          "weight": 1.5106822536603808
+        },
+        {
+          "feature": "han",
+          "weight": 1.505027326038607
+        },
+        {
+          "feature": "llegado",
+          "weight": 1.5019529919976644
+        },
+        {
+          "feature": "malo",
+          "weight": 1.4904685435738276
+        },
+        {
+          "feature": "pequeñas",
+          "weight": 1.481455402864312
+        }
+      ],
+      "lowest": [
+        {
+          "feature": "buena",
+          "weight": -2.6193491380991265
+        },
+        {
+          "feature": "genial",
+          "weight": -2.4825630167615556
+        },
+        {
+          "feature": "excelente",
+          "weight": -2.302901118392586
+        },
+        {
+          "feature": "perfecto",
+          "weight": -2.068707420664624
+        },
+        {
+          "feature": "user",
+          "weight": -1.8861746947412275
+        },
+        {
+          "feature": "feliz",
+          "weight": -1.77815402425693
+        },
+        {
+          "feature": "buen",
+          "weight": -1.5792358413969694
+        },
+        {
+          "feature": "lo mejor",
+          "weight": -1.4748266311743705
+        },
+        {
+          "feature": "rápido",
+          "weight": -1.3285114161548752
+        },
+        {
+          "feature": "encantado",
+          "weight": -1.2877592823500517
+        },
+        {
+          "feature": "bueno",
+          "weight": -1.255642281867246
+        },
+        {
+          "feature": "color",
+          "weight": -1.2540643753312435
+        },
+        {
+          "feature": "http",
+          "weight": -1.248448579772709
+        },
+        {
+          "feature": "contenta",
+          "weight": -1.2451930535976332
+        },
+        {
+          "feature": "cómodo",
+          "weight": -1.241337438461979
+        },
+        {
+          "feature": "práctico",
+          "weight": -1.238057454544889
+        },
+        {
+          "feature": "ok",
+          "weight": -1.237894672841154
+        },
+        {
+          "feature": "de calidad",
+          "weight": -1.2228196412577237
+        },
+        {
+          "feature": "bonitos",
+          "weight": -1.2027586045349188
+        },
+        {
+          "feature": "precio",
+          "weight": -1.2004348781232983
+        },
+        {
+          "feature": "gracias",
+          "weight": -1.192440181903684
+        },
+        {
+          "feature": "mais",
+          "weight": -1.1630840915688363
+        },
+        {
+          "feature": "lindo",
+          "weight": -1.1522343004626678
+        },
+        {
+          "feature": "bonito",
+          "weight": -1.1421850101937492
+        },
+        {
+          "feature": "todo bien",
+          "weight": -1.1323547661671427
+        }
+      ]
+    },
+    "Neutro": {
+      "highest": [
+        {
+          "feature": "it is",
+          "weight": 1.7738793905309103
+        },
+        {
+          "feature": "pero",
+          "weight": 1.5667802874010106
+        },
+        {
+          "feature": "verde",
+          "weight": 1.540096689487048
+        },
+        {
+          "feature": "quedo",
+          "weight": 1.5078147282999554
+        },
+        {
+          "feature": "precio",
+          "weight": 1.5022393000113021
+        },
+        {
+          "feature": "yo",
+          "weight": 1.467487471157864
+        },
+        {
+          "feature": "pero no",
+          "weight": 1.3945686191990556
+        },
+        {
+          "feature": "mais",
+          "weight": 1.3546858961087291
+        },
+        {
+          "feature": "but",
+          "weight": 1.3250134634449116
+        },
+        {
+          "feature": "color",
+          "weight": 1.314101432462199
+        },
+        {
+          "feature": "alguna",
+          "weight": 1.311921958618199
+        },
+        {
+          "feature": "user",
+          "weight": 1.3096189120103723
+        },
+        {
+          "feature": "deixa",
+          "weight": 1.3000733139001592
+        },
+        {
+          "feature": "básico",
+          "weight": 1.299463067867882
+        },
+        {
+          "feature": "cumple",
+          "weight": 1.2729662621494018
+        },
+        {
+          "feature": "aceptable",
+          "weight": 1.2622827717577385
+        },
+        {
+          "feature": "urgente",
+          "weight": 1.248561493243886
+        },
+        {
+          "feature": "average",
+          "weight": 1.226018102869278
+        },
+        {
+          "feature": "con esta",
+          "weight": 1.160841297353272
+        },
+        {
+          "feature": "juntos",
+          "weight": 1.1413546014625653
+        },
+        {
+          "feature": "misma",
+          "weight": 1.141171634129302
+        },
+        {
+          "feature": "navidad",
+          "weight": 1.1330803790193467
+        },
+        {
+          "feature": "delgado",
+          "weight": 1.1260986345271755
+        },
+        {
+          "feature": "poco lento",
+          "weight": 1.1180216557252802
+        },
+        {
+          "feature": "sin más",
+          "weight": 1.1029055279227626
+        }
+      ],
+      "lowest": [
+        {
+          "feature": "calidad",
+          "weight": -1.9746656092596124
+        },
+        {
+          "feature": "perfecto",
+          "weight": -1.806645949110145
+        },
+        {
+          "feature": "recomiendo",
+          "weight": -1.6030731084732621
+        },
+        {
+          "feature": "compra",
+          "weight": -1.510306737762059
+        },
+        {
+          "feature": "triste",
+          "weight": -1.4233805359234761
+        },
+        {
+          "feature": "muy",
+          "weight": -1.415396019443938
+        },
+        {
+          "feature": "esperando",
+          "weight": -1.3917456828004409
+        },
+        {
+          "feature": "this",
+          "weight": -1.3240315411636183
+        },
+        {
+          "feature": "llegó",
+          "weight": -1.2625318343917251
+        },
+        {
+          "feature": "que lo",
+          "weight": -1.2213311825971656
+        },
+        {
+          "feature": "genial",
+          "weight": -1.2064656830534441
+        },
+        {
+          "feature": "nunca",
+          "weight": -1.2010630107503675
+        },
+        {
+          "feature": "ha",
+          "weight": -1.1959353469681182
+        },
+        {
+          "feature": "suerte",
+          "weight": -1.1769405367852461
+        },
+        {
+          "feature": "do",
+          "weight": -1.159480388077574
+        },
+        {
+          "feature": "nada",
+          "weight": -1.1479477225653683
+        },
+        {
+          "feature": "instrucciones",
+          "weight": -1.1230103200864987
+        },
+        {
+          "feature": "pero me",
+          "weight": -1.1101782152421826
+        },
+        {
+          "feature": "roto",
+          "weight": -1.0991512162185169
+        },
+        {
+          "feature": "cristal",
+          "weight": -1.0908484427043434
+        },
+        {
+          "feature": "niño",
+          "weight": -1.090465757469086
+        },
+        {
+          "feature": "pequeño",
+          "weight": -1.0866517105800626
+        },
+        {
+          "feature": "no funciona",
+          "weight": -1.082741261001927
+        },
+        {
+          "feature": "bastante",
+          "weight": -1.080514038073464
+        },
+        {
+          "feature": "son",
+          "weight": -1.0748938520547038
+        }
+      ]
+    },
+    "Positivo": {
+      "highest": [
+        {
+          "feature": "perfecto",
+          "weight": 3.8753533697747686
+        },
+        {
+          "feature": "genial",
+          "weight": 3.689028699815001
+        },
+        {
+          "feature": "buena",
+          "weight": 3.474756601726197
+        },
+        {
+          "feature": "excelente",
+          "weight": 3.1451173410846964
+        },
+        {
+          "feature": "calidad",
+          "weight": 2.847937244232605
+        },
+        {
+          "feature": "perfectamente",
+          "weight": 1.9259340904147848
+        },
+        {
+          "feature": "muy buena",
+          "weight": 1.8745844178550461
+        },
+        {
+          "feature": "bonito",
+          "weight": 1.858044817152368
+        },
+        {
+          "feature": "sem",
+          "weight": 1.8330720931212077
+        },
+        {
+          "feature": "me encanta",
+          "weight": 1.8308016493998849
+        },
+        {
+          "feature": "compra",
+          "weight": 1.8106938097288665
+        },
+        {
+          "feature": "buen",
+          "weight": 1.8088504693796021
+        },
+        {
+          "feature": "encantado",
+          "weight": 1.8003988212598363
+        },
+        {
+          "feature": "rápido",
+          "weight": 1.7777971919640667
+        },
+        {
+          "feature": "maravilla",
+          "weight": 1.738921208879377
+        },
+        {
+          "feature": "buena calidad",
+          "weight": 1.7044293273922293
+        },
+        {
+          "feature": "calidadprecio",
+          "weight": 1.6342262451141232
+        },
+        {
+          "feature": "contenta",
+          "weight": 1.633644279685926
+        },
+        {
+          "feature": "contento",
+          "weight": 1.57191777619493
+        },
+        {
+          "feature": "gracias",
+          "weight": 1.5676783119129845
+        },
+        {
+          "feature": "estupendo",
+          "weight": 1.5660472765967632
+        },
+        {
+          "feature": "encanta",
+          "weight": 1.5519628236794676
+        },
+        {
+          "feature": "ideal",
+          "weight": 1.5320693578359788
+        },
+        {
+          "feature": "recomiendo",
+          "weight": 1.524730890478794
+        },
+        {
+          "feature": "relación",
+          "weight": 1.4977024075943164
+        }
+      ],
+      "lowest": [
+        {
+          "feature": "no",
+          "weight": -5.640390250392838
+        },
+        {
+          "feature": "porque",
+          "weight": -1.619838972749483
+        },
+        {
+          "feature": "mala",
+          "weight": -1.5940225420354563
+        },
+        {
+          "feature": "ni",
+          "weight": -1.574639692191721
+        },
+        {
+          "feature": "pequeño",
+          "weight": -1.528762319395957
+        },
+        {
+          "feature": "yo",
+          "weight": -1.5044897557970962
+        },
+        {
+          "feature": "tamaño",
+          "weight": -1.4718401972238642
+        },
+        {
+          "feature": "pequeños",
+          "weight": -1.4611249609382406
+        },
+        {
+          "feature": "peor",
+          "weight": -1.3749651789459887
+        },
+        {
+          "feature": "pero",
+          "weight": -1.360041131980473
+        },
+        {
+          "feature": "decepcionado",
+          "weight": -1.3264569202952314
+        },
+        {
+          "feature": "normal",
+          "weight": -1.2512698266037456
+        },
+        {
+          "feature": "alguna",
+          "weight": -1.1611310473749723
+        },
+        {
+          "feature": "caro",
+          "weight": -1.1436856237530173
+        },
+        {
+          "feature": "marca",
+          "weight": -1.1235620746068344
+        },
+        {
+          "feature": "feo",
+          "weight": -1.104388045567865
+        },
+        {
+          "feature": "rota",
+          "weight": -1.10414801210025
+        },
+        {
+          "feature": "esto",
+          "weight": -1.0892350884142092
+        },
+        {
+          "feature": "pero no",
+          "weight": -1.082441369887881
+        },
+        {
+          "feature": "problema",
+          "weight": -1.07736779830803
+        },
+        {
+          "feature": "pequeñas",
+          "weight": -1.0718623173511908
+        },
+        {
+          "feature": "realidad",
+          "weight": -1.070867562663801
+        },
+        {
+          "feature": "se",
+          "weight": -1.0664942571952654
+        },
+        {
+          "feature": "user lo",
+          "weight": -1.05816588344288
+        },
+        {
+          "feature": "mal",
+          "weight": -1.042047405473866
+        }
+      ]
+    }
+  },
+  "commercial_term_coefficients": {
+    "compra": {
+      "Negativo": -0.3003870719668119,
+      "Neutro": -1.510306737762059,
+      "Positivo": 1.8106938097288665
+    },
+    "devolucion": null,
+    "devolución": {
+      "Negativo": 1.5531581772788057,
+      "Neutro": -0.8549970162149462,
+      "Positivo": -0.6981611610638584
+    },
+    "entrega": {
+      "Negativo": 0.36845736960295716,
+      "Neutro": -0.9386500583809365,
+      "Positivo": 0.5701926887779792
+    },
+    "factura": null,
+    "garantia": null,
+    "garantía": null,
+    "pedido": {
+      "Negativo": 0.33632900307898894,
+      "Neutro": -0.34877047626006563,
+      "Positivo": 0.012441473181076568
+    },
+    "problema": {
+      "Negativo": 1.7976203715919141,
+      "Neutro": -0.7202525732838851,
+      "Positivo": -1.07736779830803
+    },
+    "producto": {
+      "Negativo": 0.4365156617659002,
+      "Neutro": -0.8348566021185482,
+      "Positivo": 0.39834094035264916
+    },
+    "reintegro": null,
+    "soporte": {
+      "Negativo": 0.29492797872048543,
+      "Neutro": -0.023897656963289424,
+      "Positivo": -0.2710303217571962
+    }
+  },
+  "coefficient_caution": "Coefficients are conditional associations in this fitted linear model; they do not establish causality."
+}

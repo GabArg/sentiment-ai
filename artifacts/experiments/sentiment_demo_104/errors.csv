@@ -1,0 +1,27 @@
+﻿case_id,comentario,expected_sentiment,predicted_sentiment,local_confidence,probability_negativo,probability_neutro,probability_positivo,is_factual_neutral,is_negation,high_confidence_error
+DEMO-005,El producto tiene una garantía de doce meses.,Neutro,Negativo,0.5622269186793362,0.5622269186793362,0.16245871526949895,0.275314366051165,True,False,False
+DEMO-009,El producto corresponde al modelo publicado en el catálogo.,Neutro,Negativo,0.5679428777632167,0.5679428777632167,0.18468773620063944,0.24736938603614375,True,False,False
+DEMO-010,El modelo corresponde a la versión publicada este año.,Neutro,Negativo,0.7491092619589861,0.7491092619589861,0.12004844814719355,0.13084228989382027,True,False,False
+DEMO-013,El envío tardó mucho más de lo informado al comprar.,Negativo,Positivo,0.7065378781585675,0.18465119351499099,0.10881092832644151,0.7065378781585675,False,False,False
+DEMO-023,El sitio web es muy lento y muestra errores al pagar.,Negativo,Positivo,0.4152358220992118,0.3417062476297099,0.24305793027107836,0.4152358220992118,False,False,False
+DEMO-028,Me enviaron un producto diferente al que había comprado.,Negativo,Positivo,0.3613114075159475,0.3322121558587498,0.3064764366253028,0.3613114075159475,False,False,False
+DEMO-040,El servicio de atención funciona de lunes a viernes.,Neutro,Positivo,0.4988328320352642,0.22085287858239705,0.2803142893823389,0.4988328320352642,True,False,False
+DEMO-049,El personal fue amable y me ayudó durante todo el proceso.,Positivo,Negativo,0.6281603306757584,0.6281603306757584,0.19035200484145048,0.18148766448279127,False,False,False
+DEMO-054,La devolución se resolvió rápidamente y recibí el reintegro sin problemas.,Positivo,Negativo,0.9283713137451256,0.9283713137451256,0.04295937661475928,0.028669309640115097,False,True,True
+DEMO-058,La entrega llegó después de la fecha límite que necesitaba.,Negativo,Positivo,0.5642907660580005,0.396431642242289,0.039277591699710415,0.5642907660580005,False,False,False
+DEMO-061,El precio fue conveniente y el producto superó mis expectativas.,Positivo,Neutro,0.5336902138256224,0.17275116353101613,0.5336902138256224,0.29355862264336147,False,False,False
+DEMO-065,El pago se registró mediante tarjeta de crédito.,Neutro,Negativo,0.45891630637840675,0.45891630637840675,0.4004400301635848,0.14064366345800847,True,False,False
+DEMO-066,El artículo está disponible en tres colores.,Neutro,Negativo,0.4073359826183935,0.4073359826183935,0.3337381192723319,0.2589258981092747,True,False,False
+DEMO-072,El pedido fue realizado el lunes y figura como recibido.,Neutro,Negativo,0.5117547690853316,0.5117547690853316,0.09861251767893785,0.3896327132357306,True,False,False
+DEMO-075,El pedido se encuentra en preparación según el sistema.,Neutro,Negativo,0.614972338952807,0.614972338952807,0.1701759224955716,0.21485173855162135,True,False,False
+DEMO-077,La factura fue emitida con fecha del mes actual.,Neutro,Negativo,0.43018842909444627,0.43018842909444627,0.19202710788387242,0.3777844630216814,True,False,False
+DEMO-079,El paquete contiene las instrucciones y la garantía.,Neutro,Negativo,0.7085540383539889,0.7085540383539889,0.0660074962316914,0.2254384654143197,True,False,False
+DEMO-080,Llamé tres veces y cada agente me dio una respuesta diferente.,Negativo,Positivo,0.5580287876281241,0.20191939933203626,0.24005181303983955,0.5580287876281241,False,False,False
+DEMO-087,La compra incluye dos unidades y un accesorio adicional.,Neutro,Positivo,0.6682499769996367,0.2492582734480522,0.08249174955231102,0.6682499769996367,True,False,False
+DEMO-088,El paquete pesa dos kilogramos según la etiqueta.,Neutro,Negativo,0.5866133057726783,0.5866133057726783,0.1635104488976761,0.24987624532964556,True,False,False
+DEMO-093,La página se bloquea cada vez que intento finalizar la compra.,Negativo,Positivo,0.6441146624299137,0.2505318700573971,0.10535346751268916,0.6441146624299137,False,False,False
+DEMO-095,Tuve que reclamar varias veces por el retraso de mi paquete.,Negativo,Positivo,0.4820363024259096,0.31468721852444553,0.20327647904964485,0.4820363024259096,False,False,False
+DEMO-096,La compra fue realizada desde la aplicación móvil.,Neutro,Positivo,0.6591376054491831,0.22932290263480462,0.11153949191601222,0.6591376054491831,True,False,False
+DEMO-097,El retraso del envío arruinó mi experiencia de compra.,Negativo,Positivo,0.5436010832922266,0.22806863093623525,0.2283302857715381,0.5436010832922266,False,False,False
+DEMO-101,La entrega está programada para el próximo jueves.,Neutro,Positivo,0.44111465282456325,0.3940225780933659,0.16486276908207081,0.44111465282456325,True,False,False
+DEMO-104,El soporte solucionó mi problema de manera rápida y profesional.,Positivo,Negativo,0.5045430709627979,0.5045430709627979,0.28420987021467353,0.21124705882252856,False,False,False

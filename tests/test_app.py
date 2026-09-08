@@ -16,15 +16,20 @@ from src.structured_sentiment_review import StructuredSentimentReviewProvider, S
 
 
 def test_all_plotly_charts_use_supported_streamlit_150_arguments():
-    tree = ast.parse((Path(__file__).parents[1] / "app.py").read_text(encoding="utf-8"))
+    root = Path(__file__).parents[1]
+    trees = [
+        ast.parse((root / path).read_text(encoding="utf-8"))
+        for path in ("app.py", "src/ui/charts.py")
+    ]
     calls = [
         node
+        for tree in trees
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "plotly_chart"
     ]
-    assert len(calls) == 6
+    assert len(calls) == 4
     for call in calls:
         keywords = {keyword.arg for keyword in call.keywords}
         assert "width" not in keywords
@@ -60,6 +65,7 @@ def _run_hybrid_case(monkeypatch, text, review_result):
 def test_app_starts_and_individual_analysis_works():
     app = AppTest.from_file("../app.py", default_timeout=20).run()
     assert not app.exception
+    assert any("El resultado aparecerá acá" in item.value for item in app.markdown)
 
     app.text_area[0].set_value("La atención fue excelente y llegó a tiempo.")
     app.button[0].click().run()
@@ -173,6 +179,52 @@ def test_dashboard_uses_human_hybrid_traceability_labels(monkeypatch):
     assert "Corregidos por second check" in trace
     assert "Fallback local" in trace
     assert "local_only" not in trace and "disagreement" not in trace
+
+
+def test_pareto_page_renders_priority_view_from_active_batch():
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.session_state["batch_results"] = pd.DataFrame(
+        {
+            "text": [
+                "entrega tarde paquete",
+                "entrega tarde demora",
+                "soporte no responde",
+                "excelente atención",
+            ],
+            "sentiment": ["Negativo", "Negativo", "Negativo", "Positivo"],
+            "confidence": [0.9, 0.8, 0.85, 0.9],
+        }
+    )
+    app.radio[0].set_value("Pareto 80/20").run()
+
+    assert not app.exception
+    visible = " ".join(item.value for item in app.markdown)
+    assert "Términos en el bloque 80/20" in visible
+    assert "Ranking del primer bloque del Pareto" in visible
+    assert "ni causas verificadas" in visible
+    assert len(app.get("plotly_chart")) == 1
+    assert len(app.dataframe) == 1
+
+
+def test_report_page_renders_structured_deterministic_brief_without_external_call(monkeypatch):
+    monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.session_state["batch_results"] = pd.DataFrame(
+        {
+            "text": ["entrega tarde", "soporte no responde", "excelente atención"],
+            "sentiment": ["Negativo", "Negativo", "Positivo"],
+            "confidence": [0.9, 0.8, 0.9],
+        }
+    )
+    app.radio[0].set_value("Informe ejecutivo").run()
+
+    assert not app.exception
+    visible = " ".join(item.value for item in app.markdown)
+    assert "Generado con reglas determinísticas" in visible
+    assert "Términos negativos frecuentes" in visible
+    assert "Alcance metodológico" in visible
+    assert "nunca recibe el CSV completo ni comentarios individuales" in visible
+    assert len(app.get("download_button")) == 1
 
 
 def _mock_translation(source_language, translated_text, *, success=True, error_code=None):
@@ -296,11 +348,109 @@ def test_direct_short_text_and_fallback_labels(monkeypatch):
 
 
 class _UploadedCsv:
-    def __init__(self, payload: bytes):
+    def __init__(self, payload: bytes, name: str = "feedback.csv"):
         self.payload = payload
+        self.name = name
 
     def getvalue(self):
         return self.payload
+
+
+def _fake_local_batch(frame, column, _predictor):
+    labels = ["Negativo", "Negativo", "Positivo", "Neutro"]
+    return (
+        pd.DataFrame(
+            {
+                "text": frame[column].astype(str).tolist(),
+                "sentiment": [labels[index % len(labels)] for index in range(len(frame))],
+                "confidence": [0.8] * len(frame),
+            }
+        ),
+        0,
+    )
+
+
+def test_batch_results_and_download_survive_full_navigation(monkeypatch):
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW", "false")
+    payload = (
+        "comentario,canal\n"
+        "entrega tarde,web\n"
+        "entrega tarde otra vez,web\n"
+        "excelente,tienda\n"
+        "recibido,tienda\n"
+    ).encode()
+    upload_calls = 0
+    analysis_calls = 0
+
+    def transient_upload(*_args, **_kwargs):
+        nonlocal upload_calls
+        upload_calls += 1
+        return _UploadedCsv(payload) if upload_calls <= 2 else None
+
+    def analyze_once(frame, column, predictor):
+        nonlocal analysis_calls
+        analysis_calls += 1
+        return _fake_local_batch(frame, column, predictor)
+
+    monkeypatch.setattr(st, "file_uploader", transient_upload)
+    monkeypatch.setattr("src.batch.analyze_dataframe", analyze_once)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.radio[0].set_value(app.radio[0].options[1]).run()
+    app.button[0].click().run()
+
+    expected = app.session_state["batch_results"].copy()
+    download_url = app.get("download_button")[0].proto.url
+    assert analysis_calls == 1
+
+    for page in ("Dashboard", "Pareto 80/20", "Informe ejecutivo", "Acerca del proyecto"):
+        app.radio[0].set_value(page).run()
+        assert not app.exception
+
+    app.radio[0].set_value(app.radio[0].options[1]).run()
+    assert not app.exception
+    pd.testing.assert_frame_equal(app.session_state["batch_results"], expected)
+    assert len(app.dataframe) == 1
+    assert app.get("download_button")[0].proto.url == download_url
+    assert any("Resultados conservados durante esta" in item.value for item in app.caption)
+    assert analysis_calls == 1
+
+
+def test_new_batch_source_hides_old_results_until_processed(monkeypatch):
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW", "false")
+    current = {
+        "upload": _UploadedCsv("comentario,canal\nlote anterior,web\n".encode(), "anterior.csv")
+    }
+    analysis_calls = 0
+
+    def analyze(frame, column, predictor):
+        nonlocal analysis_calls
+        analysis_calls += 1
+        return _fake_local_batch(frame, column, predictor)
+
+    monkeypatch.setattr(st, "file_uploader", lambda *_args, **_kwargs: current["upload"])
+    monkeypatch.setattr("src.batch.analyze_dataframe", analyze)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.radio[0].set_value(app.radio[0].options[1]).run()
+    app.button[0].click().run()
+    previous_source = app.session_state["batch_source_id"]
+    assert analysis_calls == 1
+
+    current["upload"] = _UploadedCsv("comentario,canal\nlote nuevo,tienda\n".encode(), "nuevo.csv")
+    app.run()
+    assert not app.exception
+    assert len(app.get("download_button")) == 0
+    assert any("distintos del lote activo" in item.value for item in app.info)
+    assert analysis_calls == 1
+
+    app.button[0].click().run()
+    assert analysis_calls == 2
+    assert app.session_state["batch_source_id"] != previous_source
+    assert app.session_state["batch_results"]["text"].tolist() == ["lote nuevo"]
+    assert len(app.get("download_button")) == 1
 
 
 def _run_direct_batch(monkeypatch, review_result):
@@ -357,8 +507,7 @@ def test_about_privacy_is_correct_for_direct_review_across_flag_combinations(mon
     assert not app.exception
     visible = " ".join(item.value for item in app.markdown).casefold()
     assert "comentario anonimizado" in visible
-    assert "nunca otras columnas del csv" in visible
-    assert "original permanece en la aplicación" in visible
-    assert "proveedor externo" in visible
-    assert "informe ia agregado es una funcionalidad separada" in visible
-    assert "nunca se envían comentarios" not in visible
+    assert "excluye las demás columnas del csv" in visible
+    assert "informe agregado es una acción opcional y separada" in visible
+    assert "no comentarios individuales ni el archivo csv" in visible
+    assert "no existe una garantía de desidentificación completa" in visible

@@ -1,0 +1,1187 @@
+{
+  "manual_60": {
+    "source": "tests\\fixtures\\sentiment_benchmark.csv",
+    "sha256": "2364b4541264ab98a0986d28e965b1d99fe2ad3ef713ec1aef0e32cb6cb96a41",
+    "selection_policy": "diagnostic_only",
+    "current_str_strip": {
+      "accuracy": 0.5166666666666667,
+      "macro_f1": 0.4868010439224832,
+      "weighted_f1": 0.4868010439224832,
+      "per_class": {
+        "Negativo": {
+          "precision": 0.44,
+          "recall": 0.55,
+          "f1": 0.4888888888888889,
+          "support": 20
+        },
+        "Neutro": {
+          "precision": 0.4444444444444444,
+          "recall": 0.2,
+          "f1": 0.27586206896551724,
+          "support": 20
+        },
+        "Positivo": {
+          "precision": 0.6153846153846154,
+          "recall": 0.8,
+          "f1": 0.6956521739130435,
+          "support": 20
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Negativo",
+          "Neutro",
+          "Positivo"
+        ],
+        "values": [
+          [
+            11,
+            4,
+            5
+          ],
+          [
+            11,
+            4,
+            5
+          ],
+          [
+            3,
+            1,
+            16
+          ]
+        ]
+      },
+      "changed_vs_current": 0,
+      "zero_feature_rows": 0,
+      "mean_nonzero_features": 5.733333333333333,
+      "subgroups": {
+        "factual_neutral": {
+          "accuracy": 0.2,
+          "macro_f1": 0.1111111111111111,
+          "weighted_f1": 0.3333333333333333,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 1.0,
+              "recall": 0.2,
+              "f1": 0.3333333333333333,
+              "support": 20
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                11,
+                4,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "negative_opinion": {
+          "accuracy": 0.55,
+          "macro_f1": 0.23655913978494625,
+          "weighted_f1": 0.7096774193548387,
+          "per_class": {
+            "Negativo": {
+              "precision": 1.0,
+              "recall": 0.55,
+              "f1": 0.7096774193548387,
+              "support": 20
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                11,
+                4,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "positive_opinion": {
+          "accuracy": 0.8,
+          "macro_f1": 0.2962962962962963,
+          "weighted_f1": 0.888888888888889,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 1.0,
+              "recall": 0.8,
+              "f1": 0.8888888888888888,
+              "support": 20
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                3,
+                1,
+                16
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "historical_clean": {
+      "accuracy": 0.5166666666666667,
+      "macro_f1": 0.4868010439224832,
+      "weighted_f1": 0.4868010439224832,
+      "per_class": {
+        "Negativo": {
+          "precision": 0.44,
+          "recall": 0.55,
+          "f1": 0.4888888888888889,
+          "support": 20
+        },
+        "Neutro": {
+          "precision": 0.4444444444444444,
+          "recall": 0.2,
+          "f1": 0.27586206896551724,
+          "support": 20
+        },
+        "Positivo": {
+          "precision": 0.6153846153846154,
+          "recall": 0.8,
+          "f1": 0.6956521739130435,
+          "support": 20
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Negativo",
+          "Neutro",
+          "Positivo"
+        ],
+        "values": [
+          [
+            11,
+            4,
+            5
+          ],
+          [
+            11,
+            4,
+            5
+          ],
+          [
+            3,
+            1,
+            16
+          ]
+        ]
+      },
+      "changed_vs_current": 0,
+      "zero_feature_rows": 0,
+      "mean_nonzero_features": 5.733333333333333,
+      "subgroups": {
+        "factual_neutral": {
+          "accuracy": 0.2,
+          "macro_f1": 0.1111111111111111,
+          "weighted_f1": 0.3333333333333333,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 1.0,
+              "recall": 0.2,
+              "f1": 0.3333333333333333,
+              "support": 20
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                11,
+                4,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "negative_opinion": {
+          "accuracy": 0.55,
+          "macro_f1": 0.23655913978494625,
+          "weighted_f1": 0.7096774193548387,
+          "per_class": {
+            "Negativo": {
+              "precision": 1.0,
+              "recall": 0.55,
+              "f1": 0.7096774193548387,
+              "support": 20
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                11,
+                4,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "positive_opinion": {
+          "accuracy": 0.8,
+          "macro_f1": 0.2962962962962963,
+          "weighted_f1": 0.888888888888889,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 1.0,
+              "recall": 0.8,
+              "f1": 0.8888888888888888,
+              "support": 20
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                3,
+                1,
+                16
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "nfkc_whitespace": {
+      "accuracy": 0.5166666666666667,
+      "macro_f1": 0.4868010439224832,
+      "weighted_f1": 0.4868010439224832,
+      "per_class": {
+        "Negativo": {
+          "precision": 0.44,
+          "recall": 0.55,
+          "f1": 0.4888888888888889,
+          "support": 20
+        },
+        "Neutro": {
+          "precision": 0.4444444444444444,
+          "recall": 0.2,
+          "f1": 0.27586206896551724,
+          "support": 20
+        },
+        "Positivo": {
+          "precision": 0.6153846153846154,
+          "recall": 0.8,
+          "f1": 0.6956521739130435,
+          "support": 20
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Negativo",
+          "Neutro",
+          "Positivo"
+        ],
+        "values": [
+          [
+            11,
+            4,
+            5
+          ],
+          [
+            11,
+            4,
+            5
+          ],
+          [
+            3,
+            1,
+            16
+          ]
+        ]
+      },
+      "changed_vs_current": 0,
+      "zero_feature_rows": 0,
+      "mean_nonzero_features": 5.733333333333333,
+      "subgroups": {
+        "factual_neutral": {
+          "accuracy": 0.2,
+          "macro_f1": 0.1111111111111111,
+          "weighted_f1": 0.3333333333333333,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 1.0,
+              "recall": 0.2,
+              "f1": 0.3333333333333333,
+              "support": 20
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                11,
+                4,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "negative_opinion": {
+          "accuracy": 0.55,
+          "macro_f1": 0.23655913978494625,
+          "weighted_f1": 0.7096774193548387,
+          "per_class": {
+            "Negativo": {
+              "precision": 1.0,
+              "recall": 0.55,
+              "f1": 0.7096774193548387,
+              "support": 20
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                11,
+                4,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "positive_opinion": {
+          "accuracy": 0.8,
+          "macro_f1": 0.2962962962962963,
+          "weighted_f1": 0.888888888888889,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 1.0,
+              "recall": 0.8,
+              "f1": 0.8888888888888888,
+              "support": 20
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                3,
+                1,
+                16
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "abstention_sensitivity": [
+      {
+        "threshold": 0.5,
+        "coverage": 0.7166666666666667,
+        "covered_cases": 43,
+        "selective_accuracy": 0.5581395348837209,
+        "selective_macro_f1": 0.47478070175438597,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.3,
+          "Neutro": 0.4,
+          "Positivo": 0.15
+        },
+        "high_confidence_errors_remaining": 19,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      },
+      {
+        "threshold": 0.6,
+        "coverage": 0.5,
+        "covered_cases": 30,
+        "selective_accuracy": 0.7,
+        "selective_macro_f1": 0.5976122642789309,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.4,
+          "Neutro": 0.75,
+          "Positivo": 0.35
+        },
+        "high_confidence_errors_remaining": 9,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      },
+      {
+        "threshold": 0.7,
+        "coverage": 0.3333333333333333,
+        "covered_cases": 20,
+        "selective_accuracy": 0.75,
+        "selective_macro_f1": 0.5357142857142857,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.6,
+          "Neutro": 0.85,
+          "Positivo": 0.55
+        },
+        "high_confidence_errors_remaining": 5,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      },
+      {
+        "threshold": 0.8,
+        "coverage": 0.16666666666666666,
+        "covered_cases": 10,
+        "selective_accuracy": 0.9,
+        "selective_macro_f1": 0.6410256410256411,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.85,
+          "Neutro": 0.95,
+          "Positivo": 0.7
+        },
+        "high_confidence_errors_remaining": 1,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      }
+    ]
+  },
+  "synthetic_demo_104": {
+    "source": "artifacts\\experiments\\sentiment_ai_demo_pareto_104.csv",
+    "sha256": "16610c4e3aaa601c09fbf32e47baaceef7f39b3eff75f5bac8fe0b2a7356a206",
+    "selection_policy": "diagnostic_only",
+    "current_str_strip": {
+      "accuracy": 0.75,
+      "macro_f1": 0.5197798417612659,
+      "weighted_f1": 0.714346669842026,
+      "per_class": {
+        "Negativo": {
+          "precision": 0.8354430379746836,
+          "recall": 0.8918918918918919,
+          "f1": 0.8627450980392157,
+          "support": 74
+        },
+        "Neutro": {
+          "precision": 0.5,
+          "recall": 0.06666666666666667,
+          "f1": 0.11764705882352941,
+          "support": 15
+        },
+        "Positivo": {
+          "precision": 0.4782608695652174,
+          "recall": 0.7333333333333333,
+          "f1": 0.5789473684210527,
+          "support": 15
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Negativo",
+          "Neutro",
+          "Positivo"
+        ],
+        "values": [
+          [
+            66,
+            0,
+            8
+          ],
+          [
+            10,
+            1,
+            4
+          ],
+          [
+            3,
+            1,
+            11
+          ]
+        ]
+      },
+      "changed_vs_current": 0,
+      "zero_feature_rows": 0,
+      "mean_nonzero_features": 9.26923076923077,
+      "subgroups": {
+        "factual_neutral": {
+          "accuracy": 0.06666666666666667,
+          "macro_f1": 0.041666666666666664,
+          "weighted_f1": 0.125,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 1.0,
+              "recall": 0.06666666666666667,
+              "f1": 0.125,
+              "support": 15
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                10,
+                1,
+                4
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "synthetic_opinion": {
+          "accuracy": 0.8651685393258427,
+          "macro_f1": 0.5233785822021116,
+          "weighted_f1": 0.8765570186588032,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.9565217391304348,
+              "recall": 0.8918918918918919,
+              "f1": 0.9230769230769231,
+              "support": 74
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 0.5789473684210527,
+              "recall": 0.7333333333333333,
+              "f1": 0.6470588235294118,
+              "support": 15
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                66,
+                0,
+                8
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                3,
+                1,
+                11
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "historical_clean": {
+      "accuracy": 0.75,
+      "macro_f1": 0.5197798417612659,
+      "weighted_f1": 0.714346669842026,
+      "per_class": {
+        "Negativo": {
+          "precision": 0.8354430379746836,
+          "recall": 0.8918918918918919,
+          "f1": 0.8627450980392157,
+          "support": 74
+        },
+        "Neutro": {
+          "precision": 0.5,
+          "recall": 0.06666666666666667,
+          "f1": 0.11764705882352941,
+          "support": 15
+        },
+        "Positivo": {
+          "precision": 0.4782608695652174,
+          "recall": 0.7333333333333333,
+          "f1": 0.5789473684210527,
+          "support": 15
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Negativo",
+          "Neutro",
+          "Positivo"
+        ],
+        "values": [
+          [
+            66,
+            0,
+            8
+          ],
+          [
+            10,
+            1,
+            4
+          ],
+          [
+            3,
+            1,
+            11
+          ]
+        ]
+      },
+      "changed_vs_current": 0,
+      "zero_feature_rows": 0,
+      "mean_nonzero_features": 9.26923076923077,
+      "subgroups": {
+        "factual_neutral": {
+          "accuracy": 0.06666666666666667,
+          "macro_f1": 0.041666666666666664,
+          "weighted_f1": 0.125,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 1.0,
+              "recall": 0.06666666666666667,
+              "f1": 0.125,
+              "support": 15
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                10,
+                1,
+                4
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "synthetic_opinion": {
+          "accuracy": 0.8651685393258427,
+          "macro_f1": 0.5233785822021116,
+          "weighted_f1": 0.8765570186588032,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.9565217391304348,
+              "recall": 0.8918918918918919,
+              "f1": 0.9230769230769231,
+              "support": 74
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 0.5789473684210527,
+              "recall": 0.7333333333333333,
+              "f1": 0.6470588235294118,
+              "support": 15
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                66,
+                0,
+                8
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                3,
+                1,
+                11
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "nfkc_whitespace": {
+      "accuracy": 0.75,
+      "macro_f1": 0.5197798417612659,
+      "weighted_f1": 0.714346669842026,
+      "per_class": {
+        "Negativo": {
+          "precision": 0.8354430379746836,
+          "recall": 0.8918918918918919,
+          "f1": 0.8627450980392157,
+          "support": 74
+        },
+        "Neutro": {
+          "precision": 0.5,
+          "recall": 0.06666666666666667,
+          "f1": 0.11764705882352941,
+          "support": 15
+        },
+        "Positivo": {
+          "precision": 0.4782608695652174,
+          "recall": 0.7333333333333333,
+          "f1": 0.5789473684210527,
+          "support": 15
+        }
+      },
+      "confusion_matrix": {
+        "labels": [
+          "Negativo",
+          "Neutro",
+          "Positivo"
+        ],
+        "values": [
+          [
+            66,
+            0,
+            8
+          ],
+          [
+            10,
+            1,
+            4
+          ],
+          [
+            3,
+            1,
+            11
+          ]
+        ]
+      },
+      "changed_vs_current": 0,
+      "zero_feature_rows": 0,
+      "mean_nonzero_features": 9.26923076923077,
+      "subgroups": {
+        "factual_neutral": {
+          "accuracy": 0.06666666666666667,
+          "macro_f1": 0.041666666666666664,
+          "weighted_f1": 0.125,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Neutro": {
+              "precision": 1.0,
+              "recall": 0.06666666666666667,
+              "f1": 0.125,
+              "support": 15
+            },
+            "Positivo": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                10,
+                1,
+                4
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "synthetic_opinion": {
+          "accuracy": 0.8651685393258427,
+          "macro_f1": 0.5233785822021116,
+          "weighted_f1": 0.8765570186588032,
+          "per_class": {
+            "Negativo": {
+              "precision": 0.9565217391304348,
+              "recall": 0.8918918918918919,
+              "f1": 0.9230769230769231,
+              "support": 74
+            },
+            "Neutro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 0
+            },
+            "Positivo": {
+              "precision": 0.5789473684210527,
+              "recall": 0.7333333333333333,
+              "f1": 0.6470588235294118,
+              "support": 15
+            }
+          },
+          "confusion_matrix": {
+            "labels": [
+              "Negativo",
+              "Neutro",
+              "Positivo"
+            ],
+            "values": [
+              [
+                66,
+                0,
+                8
+              ],
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                3,
+                1,
+                11
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "abstention_sensitivity": [
+      {
+        "threshold": 0.5,
+        "coverage": 0.8076923076923077,
+        "covered_cases": 84,
+        "selective_accuracy": 0.7857142857142857,
+        "selective_macro_f1": 0.5090170180340361,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.17567567567567569,
+          "Neutro": 0.4,
+          "Positivo": 0.06666666666666667
+        },
+        "high_confidence_errors_remaining": 18,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      },
+      {
+        "threshold": 0.6,
+        "coverage": 0.5961538461538461,
+        "covered_cases": 62,
+        "selective_accuracy": 0.8548387096774194,
+        "selective_macro_f1": 0.5646539840088227,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.3918918918918919,
+          "Neutro": 0.6666666666666666,
+          "Positivo": 0.2
+        },
+        "high_confidence_errors_remaining": 9,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      },
+      {
+        "threshold": 0.7,
+        "coverage": 0.375,
+        "covered_cases": 39,
+        "selective_accuracy": 0.8974358974358975,
+        "selective_macro_f1": 0.6027777777777777,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.6081081081081081,
+          "Neutro": 0.8666666666666667,
+          "Positivo": 0.4666666666666667
+        },
+        "high_confidence_errors_remaining": 4,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      },
+      {
+        "threshold": 0.8,
+        "coverage": 0.25,
+        "covered_cases": 26,
+        "selective_accuracy": 0.9615384615384616,
+        "selective_macro_f1": 0.6324786324786325,
+        "abstention_rate_by_reference_class": {
+          "Negativo": 0.7432432432432432,
+          "Neutro": 1.0,
+          "Positivo": 0.5333333333333333
+        },
+        "high_confidence_errors_remaining": 1,
+        "caution": "Sensitivity analysis only; thresholds were not selected on this dataset and selective accuracy is not global accuracy."
+      }
+    ]
+  }
+}

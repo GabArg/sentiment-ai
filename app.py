@@ -1,4 +1,4 @@
-"""Sentiment AI v2 — customer feedback analytics in Streamlit.
+"""Sentiment AI — análisis de opiniones de clientes en Streamlit.
 
 Recovered from team project H12-25-L-Equipo-72 and evolved for portfolio use.
 See ATTRIBUTION.md and LICENSE (GPL-3.0).
@@ -7,11 +7,9 @@ See ATTRIBUTION.md and LICENSE (GPL-3.0).
 from __future__ import annotations
 
 import os
+from hashlib import sha256
 
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import streamlit as st
 
 from src.ai_provider import DEFAULT_CEREBRAS_MODEL, generate_report_with_fallback
@@ -44,10 +42,49 @@ from src.sentiment_review import CerebrasSentimentReviewProvider
 from src.rate_pacer import RatePacer
 from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
+from src.ui import (
+    build_dashboard_view_model,
+    build_pareto_view_model,
+    build_traceability_text,
+    render_about_overview,
+    format_navigation_label,
+    load_global_styles,
+    prepare_batch_display,
+    preview_column_config,
+    render_batch_file_summary,
+    render_batch_kpi_cards,
+    render_batch_results_header,
+    render_batch_summary_band,
+    render_batch_upload_empty,
+    render_batch_stepper,
+    render_attention_panel,
+    render_ai_report_intro,
+    render_confidence_context_chart,
+    render_dashboard_kpis,
+    render_dataset_reading,
+    render_deterministic_brief,
+    render_individual_empty_state,
+    render_individual_intro,
+    render_individual_result_heading,
+    render_panel_heading,
+    render_pareto_detail_table,
+    render_pareto_methodology,
+    render_pareto_priority_chart,
+    render_pareto_summary,
+    render_probability_chart,
+    render_priority_ranking,
+    render_sentiment_distribution_chart,
+    render_dataset_context,
+    render_page_header,
+    render_result_card,
+    render_sidebar_brand,
+    render_sidebar_signature,
+    render_workspace_empty_state,
+    selectable_text_columns,
+)
 
 
 MAX_TEXT_LENGTH = 5_000
-SENTIMENT_COLORS = {"Negativo": "#D92D20", "Neutro": "#475467", "Positivo": "#078A61"}
 REVIEW_STATE_LABELS = {
     "local_only": "Modelo local",
     "reviewed": "Validado por second check",
@@ -72,7 +109,7 @@ EXTERNAL_ERROR_LABELS = {
 }
 
 st.set_page_config(
-    page_title="Sentiment AI v2 | Customer Feedback Analytics",
+    page_title="Sentiment AI | Análisis de Opiniones de Clientes",
     page_icon="◉",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -98,6 +135,73 @@ def get_direct_review_config():
 def get_batch_results() -> pd.DataFrame | None:
     value = st.session_state.get("batch_results")
     return value if isinstance(value, pd.DataFrame) and not value.empty else None
+
+
+def batch_source_id(payload: bytes, column: str) -> str:
+    """Identify an uploaded source and selected column without retaining file bytes."""
+    digest = sha256(payload).hexdigest()
+    return f"{digest}:{column}"
+
+
+def store_batch_results(
+    results: pd.DataFrame,
+    *,
+    source_id: str,
+    filename: str | None,
+    column: str,
+) -> None:
+    """Persist analyzed results and non-sensitive source context for this session."""
+    st.session_state["batch_results"] = results
+    st.session_state["batch_source_id"] = source_id
+    st.session_state["batch_source_name"] = filename or "Archivo CSV"
+    st.session_state["batch_source_column"] = column
+
+
+def render_saved_batch_context() -> None:
+    """Explain why results remain available after transient widgets disappear."""
+    filename = st.session_state.get("batch_source_name")
+    column = st.session_state.get("batch_source_column")
+    detail = " · ".join(str(value) for value in (filename, column) if value)
+    message = "Resultados conservados durante esta sesión"
+    st.caption(f"{message} · {detail}" if detail else message)
+
+
+def render_batch_results_view(results: pd.DataFrame, *, controlled: bool) -> None:
+    """Render stored batch output independently from uploader widget state."""
+    metrics = calculate_metrics(results)
+    if controlled:
+        display, column_config = prepare_batch_display(
+            results,
+            review_labels=REVIEW_STATE_LABELS,
+            translation_labels=TRANSLATION_STATE_LABELS,
+            direct_labels=DIRECT_REVIEW_STATE_LABELS,
+            error_labels=EXTERNAL_ERROR_LABELS,
+        )
+    else:
+        display, column_config = prepare_batch_display(results)
+    heading, action = st.columns([4, 1], gap="medium", vertical_alignment="bottom")
+    with heading:
+        render_batch_results_header()
+    with action:
+        st.download_button(
+            "Descargar CSV procesado",
+            data=results.to_csv(index=False).encode("utf-8-sig"),
+            file_name="sentiment_analysis_results.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+    render_batch_kpi_cards(metrics)
+    st.dataframe(
+        display.head(100),
+        width="stretch",
+        hide_index=True,
+        column_config=column_config,
+    )
+    if controlled:
+        summary = st.session_state.get("batch_summary")
+        summary_kind = st.session_state.get("batch_summary_kind")
+        if isinstance(summary, dict) and isinstance(summary_kind, str):
+            render_batch_traceability(results, summary, summary_kind)
 
 
 def get_analysis() -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame]:
@@ -127,96 +231,107 @@ def render_metric_cards(metrics: dict[str, object]) -> None:
 
 
 def render_individual() -> None:
-    st.header("Análisis individual")
-    st.write("Clasificá una opinión con el modelo local y revisá la probabilidad de cada clase aprendida.")
-    with st.form("individual_form"):
-        text = st.text_area(
-            "Comentario",
-            max_chars=MAX_TEXT_LENGTH,
-            height=180,
-            placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
+    context, entry = st.columns([0.72, 1.28], gap="medium")
+    with context:
+        render_individual_intro(
+            "Clasificá una opinión con el modelo local y revisá la probabilidad de cada clase aprendida.",
+            "Procesamiento local-first: inferencia determinística en la sesión con modelo empaquetado.",
         )
-        submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
-    if submitted:
-        if len(text.strip()) < 2:
-            st.warning("Ingresá un texto de al menos 2 caracteres.")
-            return
-        try:
-            prediction = get_predictor().predict_one(text)
-        except Exception:
-            st.error("No fue posible analizar el texto con los artefactos locales.")
-            return
-        left, right = st.columns([1, 2])
-        with left:
-            st.metric("Resultado final", prediction.label)
-            st.metric(
-                "Confianza del modelo local",
-                f"{prediction.confidence:.1%}",
-                help="Estimación interna del clasificador local. No representa una garantía de corrección.",
+    with entry:
+        with st.form("individual_form"):
+            text = st.text_area(
+                "Comentario",
+                max_chars=MAX_TEXT_LENGTH,
+                height=160,
+                placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
             )
-            st.caption("Origen: Modelo local")
-        with right:
+            submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
+    if not submitted:
+        render_individual_empty_state()
+        return
+    if len(text.strip()) < 2:
+        st.warning("Ingresá un texto de al menos 2 caracteres.")
+        return
+    try:
+        prediction = get_predictor().predict_one(text)
+    except Exception:
+        st.error("No fue posible analizar el texto con los artefactos locales.")
+        return
+    render_individual_result_heading()
+    left, right = st.columns([1, 1.2], gap="medium")
+    with left:
+        render_result_card(
+            prediction.label,
+            prediction.confidence,
+            "Modelo local",
+            confidence_help="Estimación interna del clasificador local. No representa una garantía de corrección.",
+        )
+    with right:
+        with st.container(border=True):
             st.subheader("Probabilidades del modelo local")
-            chart_data = sentiment_probability_frame(prediction.probabilities)
-            figure = px.bar(
-                chart_data,
-                x="probability",
-                y="sentiment",
-                orientation="h",
-                color="sentiment",
-                color_discrete_map=SENTIMENT_COLORS,
-                text=chart_data["probability"].map(lambda value: f"{value:.1%}"),
-                labels={"probability": "Probabilidad", "sentiment": ""},
-            )
-            figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
-            figure.update_xaxes(tickformat=".0%", range=[0, 1])
-            st.plotly_chart(figure, use_container_width=True)
-        st.caption("La confianza mostrada es una estimación interna del modelo local, no una garantía de corrección.")
+            render_probability_chart(prediction.probabilities)
+    st.caption("La confianza mostrada es una estimación interna del modelo local, no una garantía de corrección.")
+    with st.expander("Traza técnica"):
+        st.write(f"Predicción local: **{prediction.label}**")
+        st.write(f"Confianza local: **{prediction.confidence:.1%}**")
+        st.write("Origen: **Modelo local**")
 
 
 def render_batch() -> None:
-    st.header("Análisis masivo")
-    st.write("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
+    st.markdown("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
+    stored_results = get_batch_results()
+    render_batch_stepper(has_file=uploaded is not None, has_results=stored_results is not None)
     if uploaded is None:
-        st.info("El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras.")
+        if stored_results is not None:
+            render_saved_batch_context()
+            render_batch_results_view(stored_results, controlled=False)
+        else:
+            render_batch_upload_empty(
+                "El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras."
+            )
+            st.info("El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras.")
         return
+    payload = uploaded.getvalue()
     try:
-        frame = read_csv_upload(uploaded.getvalue())
+        frame = read_csv_upload(payload)
     except CSVValidationError as exc:
         st.error(str(exc))
         return
-    st.success(f"CSV válido: {len(frame):,} registros y {len(frame.columns)} columnas detectadas.")
-    st.dataframe(frame.head(20), width="stretch", hide_index=True)
-    column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
+    render_batch_file_summary(frame, getattr(uploaded, "name", None))
+    text_columns = selectable_text_columns(frame)
+    if not text_columns:
+        st.error("El CSV no contiene una columna disponible para analizar comentarios.")
+        return
+    column = st.selectbox("Columna que contiene el comentario", options=text_columns)
+    current_source_id = batch_source_id(payload, column)
+    st.dataframe(
+        frame.head(20),
+        width="stretch",
+        hide_index=True,
+        column_config=preview_column_config(frame),
+    )
     if st.button("Procesar comentarios", type="primary", width="stretch"):
         try:
             with st.spinner("Vectorizando y clasificando el lote…"):
                 results, dropped = analyze_dataframe(frame, column, get_predictor())
-            st.session_state["batch_results"] = results
+            store_batch_results(
+                results,
+                source_id=current_source_id,
+                filename=getattr(uploaded, "name", None),
+                column=column,
+            )
             st.session_state.pop("ai_report", None)
-            st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
+            render_batch_summary_band(len(results), dropped)
         except (CSVValidationError, ValueError) as exc:
             st.error(str(exc))
         except Exception:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
-    if results is not None:
-        st.subheader("Resultados procesados")
-        display = results.copy()
-        percentage_columns = [column for column in display if column.startswith("probability_")]
-        display["confidence"] = display["confidence"].map(lambda value: f"{value:.1%}")
-        for probability_column in percentage_columns:
-            display[probability_column] = display[probability_column].map(lambda value: f"{value:.1%}")
-        st.dataframe(display.head(100), width="stretch", hide_index=True)
-        csv_data = results.to_csv(index=False).encode("utf-8-sig")
-        st.download_button(
-            "Descargar CSV procesado",
-            data=csv_data,
-            file_name="sentiment_analysis_results.csv",
-            mime="text/csv",
-            width="stretch",
-        )
+    if results is not None and st.session_state.get("batch_source_id") == current_source_id:
+        render_batch_results_view(results, controlled=False)
+    elif results is not None:
+        st.info("El archivo o la columna seleccionados son distintos del lote activo. Procesalos para reemplazar los resultados de la sesión.")
 
 
 def render_individual_controlled() -> None:
@@ -226,18 +341,29 @@ def render_individual_controlled() -> None:
     if not config.enabled and not multilingual.enabled and not direct_config.enabled:
         render_individual()
         return
-    st.header("Análisis individual")
     if direct_config.enabled:
-        st.write("Los textos no españoles o breves pueden recibir una revisión multilingüe directa sobre el comentario anonimizado.")
+        description = "Los textos no españoles o breves pueden recibir una revisión multilingüe directa sobre el comentario anonimizado."
+        detail = "Procesamiento local-first: la inferencia inicial siempre se evalúa localmente."
     elif multilingual.enabled:
-        st.write("El idioma se detecta localmente. Los textos que requieren traducción se anonimizan antes de enviarse al proveedor externo.")
-        st.caption("La detección puede ser menos fiable en textos breves o ambiguos.")
+        description = "El idioma se detecta localmente. Los textos que requieren traducción se anonimizan antes de enviarse al proveedor externo."
+        detail = "Procesamiento local-first. La detección puede ser menos fiable en textos breves o ambiguos."
     else:
-        st.write("La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado.")
-    with st.form("individual_form"):
-        text = st.text_area("Comentario", max_chars=MAX_TEXT_LENGTH, height=180)
-        submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
+        description = "La clasificación local ocurre primero. Los casos derivados pueden recibir un second check externo anonimizado."
+        detail = "Procesamiento local-first: la inferencia inicial siempre se evalúa localmente."
+    context, entry = st.columns([0.72, 1.28], gap="medium")
+    with context:
+        render_individual_intro(description, detail)
+    with entry:
+        with st.form("individual_form"):
+            text = st.text_area(
+                "Comentario",
+                max_chars=MAX_TEXT_LENGTH,
+                height=160,
+                placeholder="Ejemplo: La atención fue excelente y el envío llegó a tiempo.",
+            )
+            submitted = st.form_submit_button("Analizar sentimiento", type="primary", width="stretch")
     if not submitted:
+        render_individual_empty_state()
         return
     if len(text.strip()) < 2:
         st.warning("Ingresá un texto de al menos 2 caracteres.")
@@ -283,57 +409,63 @@ def render_individual_controlled() -> None:
     except Exception:
         st.error("No fue posible analizar el texto con los artefactos locales.")
         return
+    render_individual_result_heading()
     if direct_result is not None and direct_result.direct_review_requested:
-        left,right=st.columns([1,2])
+        left, right = st.columns([1, 1.2])
         with left:
-            st.metric("Resultado final",direct_result.final_prediction)
-            st.metric("Confianza del modelo local",f"{prediction.confidence:.1%}",help="Estimación interna del clasificador local; no representa la confianza de la revisión externa.")
-            origin="Revisión multilingüe directa" if direct_result.direct_review_state=="direct_multilingual_review" else "Fallback local"
-            st.caption(f"Origen: {origin}")
-            if direct_result.language_state=="short_text_uncertain":st.markdown("**Idioma:** Idioma incierto por texto breve")
-            else:st.markdown(f"**Idioma detectado:** {direct_result.language_name or direct_result.detected_language or 'No determinado'}")
+            origin = "Revisión multilingüe directa" if direct_result.direct_review_state == "direct_multilingual_review" else "Fallback local"
+            render_result_card(
+                direct_result.final_prediction,
+                prediction.confidence,
+                origin,
+                confidence_help="Estimación interna del clasificador local; no representa la confianza de la revisión externa.",
+            )
+            if direct_result.language_state == "short_text_uncertain":
+                st.markdown("**Idioma:** Idioma incierto por texto breve")
+            else:
+                st.markdown(f"**Idioma detectado:** {direct_result.language_name or direct_result.detected_language or 'No determinado'}")
+            if direct_result.direct_review_state == "direct_multilingual_review":
+                st.success("La clasificación proviene de una revisión multilingüe directa.")
+                st.caption("Para esta revisión se envió únicamente el comentario anonimizado.")
+            else:
+                st.warning("Revisión externa no disponible; se utilizó el fallback local.")
         with right:
-            st.subheader("Probabilidades del modelo local")
-            chart_data=sentiment_probability_frame(prediction.probabilities)
-            figure=px.bar(chart_data,x="probability",y="sentiment",orientation="h",color="sentiment",color_discrete_map=SENTIMENT_COLORS,text=chart_data["probability"].map(lambda value:f"{value:.1%}"),labels={"probability":"Probabilidad local","sentiment":""})
-            figure.update_layout(showlegend=False,height=280,margin=dict(l=0,r=10,t=10,b=0));figure.update_xaxes(tickformat=".0%",range=[0,1]);st.plotly_chart(figure,use_container_width=True)
-        if direct_result.direct_review_state=="direct_multilingual_review":
-            st.success("La clasificación proviene de una revisión multilingüe directa.");st.caption("Para esta revisión se envió únicamente el comentario anonimizado.")
-        else:st.warning("Revisión externa no disponible; se utilizó el fallback local.")
+            with st.container(border=True):
+                st.subheader("Probabilidades del modelo local")
+                render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
+        with st.expander("Detalle técnico de revisión"):
+            st.write(f"Predicción local: **{prediction.label}**")
+            st.write(f"Confianza local: **{prediction.confidence:.1%}**")
+            st.write(f"Estado directo: **{direct_result.direct_review_state}**")
+            if direct_result.direct_review_latency_ms is not None:
+                st.write(f"Latencia externa: **{direct_result.direct_review_latency_ms:.0f} ms**")
         return
-    left, right = st.columns([1, 2])
+    left, right = st.columns([1, 1.2])
     with left:
-        st.metric("Resultado final", result.final_prediction)
-        st.metric(
-            "Confianza del modelo local",
-            f"{prediction.confidence:.1%}",
-            help="Estimación interna del clasificador local. No representa la confianza del resultado híbrido.",
-        )
         if result.review_state in {"reviewed", "disagreement"}:
             origin = "Revisión híbrida"
         elif result.review_state == "fallback_local":
             origin = "Fallback local"
         else:
             origin = "Modelo local"
-        st.caption(f"Origen: {origin}")
-        st.markdown(f"**Estado:** {REVIEW_STATE_LABELS[result.review_state]}")
-    with right:
-        st.subheader("Probabilidades del modelo local")
-        st.caption("Distribución previa al second check")
-        chart_data = sentiment_probability_frame(prediction.probabilities)
-        figure = px.bar(
-            chart_data,
-            x="probability",
-            y="sentiment",
-            orientation="h",
-            color="sentiment",
-            color_discrete_map=SENTIMENT_COLORS,
-            text=chart_data["probability"].map(lambda value: f"{value:.1%}"),
-            labels={"probability": "Probabilidad local", "sentiment": ""},
+        render_result_card(
+            result.final_prediction,
+            prediction.confidence,
+            origin,
+            confidence_help="Estimación interna del clasificador local. No representa la confianza del resultado híbrido.",
+            state_label=REVIEW_STATE_LABELS[result.review_state],
         )
-        figure.update_layout(showlegend=False, height=280, margin=dict(l=0, r=10, t=10, b=0))
-        figure.update_xaxes(tickformat=".0%", range=[0, 1])
-        st.plotly_chart(figure, use_container_width=True)
+        if result.review_state == "disagreement":
+            st.info("El second check modificó la clasificación inicial.")
+        elif result.review_state == "reviewed":
+            st.success("El second check confirmó la clasificación local.")
+        elif result.review_state == "fallback_local":
+            st.warning("La revisión externa no estuvo disponible; se conserva la clasificación local.")
+    with right:
+        with st.container(border=True):
+            st.subheader("Probabilidades del modelo local")
+            st.caption("Distribución previa al second check")
+            render_probability_chart(prediction.probabilities, probability_label="Probabilidad local")
     st.caption("La confianza mostrada es una estimación interna del modelo local; no representa confianza del resultado híbrido.")
     if preparation is not None:
         language_label = preparation.language_name or preparation.detected_language or "No determinado"
@@ -348,12 +480,6 @@ def render_individual_controlled() -> None:
                 st.warning("Límite de llamadas externas alcanzado; el análisis continuó con el texto original.")
             else:
                 st.warning("La traducción externa no estuvo disponible; el análisis continuó con el texto original.")
-    if result.review_state == "disagreement":
-        st.info("El second check modificó la clasificación inicial.")
-    elif result.review_state == "reviewed":
-        st.success("El second check confirmó la clasificación local.")
-    elif result.review_state == "fallback_local":
-        st.warning("La revisión externa no estuvo disponible; se conserva la clasificación local.")
     with st.expander("Detalle de revisión"):
         st.write(f"Predicción local: **{result.local_prediction}**")
         st.write(f"Confianza local: **{result.local_confidence:.1%}**")
@@ -375,30 +501,48 @@ def render_batch_controlled() -> None:
     if not config.enabled and not multilingual.enabled and not direct_config.enabled:
         render_batch()
         return
-    st.header("Análisis masivo")
     if direct_config.enabled:
-        st.write("Los textos no españoles o breves usan revisión multilingüe directa; no se traducen.")
+        st.markdown("Los textos no españoles o breves usan revisión multilingüe directa; no se traducen.")
     elif multilingual.enabled:
-        st.write("La detección local y la traducción controlada ocurren antes del análisis de sentimiento.")
+        st.markdown("La detección local y la traducción controlada ocurren antes del análisis de sentimiento.")
     else:
-        st.write("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
+        st.markdown("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
+    stored_results = get_batch_results()
+    render_batch_stepper(has_file=uploaded is not None, has_results=stored_results is not None)
     if uploaded is None:
         if direct_config.enabled:
-            st.info("Sólo se envía el comentario anonimizado para las revisiones directas; no se envían otras columnas del CSV.")
+            privacy_msg = "Sólo se envía el comentario anonimizado para las revisiones directas; no se envían otras columnas del CSV."
         elif multilingual.enabled:
-            st.info("Los textos que requieren traducción se anonimizan antes de enviarse a Cerebras. Sólo se envía el comentario anonimizado, sin otras columnas; el original queda preservado en la app.")
+            privacy_msg = "Los textos que requieren traducción se anonimizan antes de enviarse a Cerebras. Sólo se envía el comentario anonimizado, sin otras columnas; el original queda preservado en la app."
         else:
-            st.info("Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV.")
+            privacy_msg = "Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV."
+        if stored_results is not None:
+            render_saved_batch_context()
+            render_batch_results_view(stored_results, controlled=True)
+        else:
+            render_batch_upload_empty(privacy_msg)
+            st.info(privacy_msg)
         return
+    payload = uploaded.getvalue()
     try:
-        frame = read_csv_upload(uploaded.getvalue())
+        frame = read_csv_upload(payload)
     except CSVValidationError as exc:
         st.error(str(exc))
         return
-    st.success(f"CSV válido: {len(frame):,} registros y {len(frame.columns)} columnas detectadas.")
-    st.dataframe(frame.head(20), width="stretch", hide_index=True)
-    column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
+    render_batch_file_summary(frame, getattr(uploaded, "name", None))
+    text_columns = selectable_text_columns(frame)
+    if not text_columns:
+        st.error("El CSV no contiene una columna disponible para analizar comentarios.")
+        return
+    column = st.selectbox("Columna que contiene el comentario", options=text_columns)
+    current_source_id = batch_source_id(payload, column)
+    st.dataframe(
+        frame.head(20),
+        width="stretch",
+        hide_index=True,
+        column_config=preview_column_config(frame),
+    )
     try:
         if direct_config.enabled:
             st.info(f"Límite total compartido de llamadas externas: {multilingual.max_external_calls_per_batch:,}. Las rutas directas consumen una llamada.")
@@ -468,7 +612,12 @@ def render_batch_controlled() -> None:
                 )
             progress.empty()
             pacing_status.empty()
-            st.session_state["batch_results"] = results
+            store_batch_results(
+                results,
+                source_id=current_source_id,
+                filename=getattr(uploaded, "name", None),
+                column=column,
+            )
             st.session_state["batch_summary"] = summary
             st.session_state["batch_summary_kind"] = (
                 "direct" if direct_config.enabled else
@@ -477,7 +626,7 @@ def render_batch_controlled() -> None:
             )
             st.session_state.pop("hybrid_summary", None)
             st.session_state.pop("ai_report", None)
-            st.success(f"Se analizaron {len(results):,} comentarios. Se omitieron {dropped:,} valores nulos o vacíos.")
+            render_batch_summary_band(len(results), dropped)
             if direct_config.enabled:
                 st.info(f"Llamadas externas consumidas: {summary['external_calls_used']:,} de {summary['external_call_limit']:,}; revisiones directas {summary['direct_reviews_attempted']:,}.")
             elif multilingual.enabled:
@@ -493,38 +642,10 @@ def render_batch_controlled() -> None:
         except Exception:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
-    if results is not None:
-        st.subheader("Resultados procesados")
-        display = results.copy()
-        if "review_state" in display:
-            display["review_state"] = display["review_state"].map(REVIEW_STATE_LABELS).fillna("Estado desconocido")
-        if "translation_state" in display:
-            display["translation_state"] = display["translation_state"].map(TRANSLATION_STATE_LABELS).fillna("Estado desconocido")
-        if "direct_review_state" in display:
-            display["direct_review_state"] = display["direct_review_state"].map(DIRECT_REVIEW_STATE_LABELS).fillna("Estado desconocido")
-        if "translation_error_code" in display:
-            display["translation_error_code"] = display["translation_error_code"].map(
-                lambda value: EXTERNAL_ERROR_LABELS.get(value, value)
-            )
-        percentage_columns = [name for name in display if name.startswith("probability_")]
-        for name in ["confidence", "local_confidence"]:
-            if name in display:
-                display[name] = display[name].map(lambda value: f"{value:.1%}")
-        for name in percentage_columns:
-            display[name] = display[name].map(lambda value: f"{value:.1%}")
-        display = display.rename(columns={"review_state": "Estado de revisión", "translation_state": "Estado de traducción", "direct_review_state": "Estado de revisión directa"})
-        st.dataframe(display.head(100), width="stretch", hide_index=True)
-        summary = st.session_state.get("batch_summary")
-        summary_kind = st.session_state.get("batch_summary_kind")
-        if isinstance(summary, dict) and isinstance(summary_kind, str):
-            render_batch_traceability(results, summary, summary_kind)
-        st.download_button(
-            "Descargar CSV procesado",
-            data=results.to_csv(index=False).encode("utf-8-sig"),
-            file_name="sentiment_analysis_results.csv",
-            mime="text/csv",
-            width="stretch",
-        )
+    if results is not None and st.session_state.get("batch_source_id") == current_source_id:
+        render_batch_results_view(results, controlled=True)
+    elif results is not None:
+        st.info("El archivo o la columna seleccionados son distintos del lote activo. Procesalos para reemplazar los resultados de la sesión.")
 
 
 def render_batch_traceability(results: pd.DataFrame, summary: dict, kind: str) -> None:
@@ -549,101 +670,66 @@ def render_batch_traceability(results: pd.DataFrame, summary: dict, kind: str) -
 
 
 def render_dashboard() -> None:
-    st.header("Dashboard")
     try:
-        results, metrics, _ = get_analysis()
+        results, metrics, pareto = get_analysis()
     except ValueError as exc:
-        st.info(str(exc))
+        render_workspace_empty_state(str(exc))
         return
-    render_metric_cards(metrics)
-    if "review_state" in results.columns:
-        states = results["review_state"].value_counts(normalize=True).mul(100)
-        dashboard_labels = {
-            "local_only": "Modelo local",
-            "reviewed": "Confirmados por second check",
-            "disagreement": "Corregidos por second check",
-            "fallback_local": "Fallback local",
-        }
-        st.caption(
-            "Trazabilidad híbrida: "
-            + " · ".join(
-                f"{dashboard_labels.get(state, 'Estado desconocido')} {value:.1f}%"
-                for state, value in states.items()
-            )
-        )
+    view = build_dashboard_view_model(metrics, pareto)
+    render_dashboard_kpis(view)
     distribution = sentiment_distribution(metrics)
-    left, right = st.columns(2)
+    left, right = st.columns([1.35, 0.85], gap="medium")
     with left:
-        figure = px.bar(
-            distribution,
-            x="sentiment",
-            y="count",
-            color="sentiment",
-            color_discrete_map=SENTIMENT_COLORS,
-            text="count",
-            labels={"sentiment": "Sentimiento", "count": "Comentarios"},
-            title="Distribución de sentimientos",
-        )
-        figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
-        st.plotly_chart(figure, use_container_width=True)
+        with st.container(border=True):
+            render_panel_heading(
+                "Panorama general",
+                "Distribución de sentimientos",
+                "Composición del lote según la clasificación final.",
+            )
+            render_sentiment_distribution_chart(distribution, int(metrics["total"]))
     with right:
-        confidence = results.groupby("sentiment", as_index=False)["confidence"].mean()
-        figure = px.bar(
-            confidence,
-            x="sentiment",
-            y="confidence",
-            color="sentiment",
-            color_discrete_map=SENTIMENT_COLORS,
-            text=confidence["confidence"].map(lambda value: f"{value:.1%}"),
-            labels={"sentiment": "Sentimiento", "confidence": "Confianza media"},
-            title="Confianza media por clase",
-        )
-        figure.update_yaxes(tickformat=".0%", range=[0, 1])
-        figure.update_layout(showlegend=False, margin=dict(l=0, r=0, t=50, b=0))
-        st.plotly_chart(figure, use_container_width=True)
+        render_attention_panel(view)
 
-    st.subheader("Visión de negocio")
-    negative_pct = metrics["percentages"]["Negativo"]
-    positive_pct = metrics["percentages"]["Positivo"]
-    ratio = metrics["positive_negative_ratio"]
-    business_cols = st.columns(3)
-    business_cols[0].metric("Feedback negativo", f"{negative_pct:.1f}%")
-    business_cols[1].metric("Señal positiva", f"{positive_pct:.1f}%")
-    business_cols[2].metric(
-        "Ratio positivo/negativo",
-        "Sin negativos" if ratio == float("inf") else f"{ratio:.2f}",
-    )
-    st.write(
-        f"Se detectaron **{metrics['critical_negative_count']:,} comentarios negativos críticos**, definidos de forma transparente como negativos cuya confianza está en el cuartil superior del lote (≥ {metrics['critical_confidence_threshold']:.1%})."
-    )
+    technical, reading = st.columns([1.35, 0.85], gap="medium")
+    with technical:
+        with st.container(border=True):
+            render_panel_heading(
+                "Contexto técnico",
+                "Confianza local por clase",
+                "Promedio de la probabilidad asignada por el modelo local.",
+            )
+            render_confidence_context_chart(results)
+            st.caption("La confianza es una estimación interna del modelo local, no una garantía de corrección.")
+    with reading:
+        render_dataset_reading(view, build_traceability_text(results))
 
 
 def render_pareto() -> None:
-    st.header("Pareto de feedback negativo")
-    st.write("Los temas son n-gramas presentes en comentarios negativos. Se cuentan una vez por comentario para evitar que la repetición dentro de un texto infle la frecuencia.")
     try:
-        _, _, pareto = get_analysis()
+        _, metrics, pareto = get_analysis()
     except ValueError as exc:
-        st.info(str(exc))
+        render_workspace_empty_state(str(exc))
         return
     if pareto.empty:
-        st.info("No hay suficientes comentarios negativos para extraer temas.")
+        render_workspace_empty_state(
+            "El lote no contiene suficientes términos negativos repetidos para construir el Pareto."
+        )
         return
-    display = pareto.copy()
-    display["percentage"] = display["percentage"].map(lambda value: f"{value:.1f}%")
-    display["cumulative_percentage"] = display["cumulative_percentage"].map(lambda value: f"{value:.1f}%")
-    display["within_80_percent"] = display["within_80_percent"].map({True: "Sí", False: "No"})
-    display.columns = ["Tema", "Frecuencia", "Porcentaje", "Acumulado", "Dentro del 80%"]
-    st.dataframe(display, width="stretch", hide_index=True)
-
-    figure = make_subplots(specs=[[{"secondary_y": True}]])
-    figure.add_trace(go.Bar(x=pareto["topic"], y=pareto["frequency"], name="Frecuencia", marker_color="#3448C5"), secondary_y=False)
-    figure.add_trace(go.Scatter(x=pareto["topic"], y=pareto["cumulative_percentage"], name="% acumulado", mode="lines+markers", line=dict(color="#D92D20", width=3)), secondary_y=True)
-    figure.add_hline(y=80, line_dash="dash", line_color="#667085", annotation_text="80%", secondary_y=True)
-    figure.update_yaxes(title_text="Frecuencia", secondary_y=False)
-    figure.update_yaxes(title_text="Porcentaje acumulado", range=[0, 105], ticksuffix="%", secondary_y=True)
-    figure.update_layout(height=520, margin=dict(l=0, r=0, t=30, b=0), xaxis_tickangle=-35)
-    st.plotly_chart(figure, use_container_width=True)
+    view = build_pareto_view_model(metrics, pareto)
+    render_pareto_summary(view)
+    ranking, chart = st.columns([0.85, 1.4], gap="medium")
+    with ranking:
+        render_priority_ranking(view)
+    with chart:
+        with st.container(border=True):
+            render_panel_heading(
+                "Distribución acumulada",
+                "Frecuencia de términos negativos",
+                "Coral: primer bloque del Pareto · Gris: cola restante.",
+            )
+            render_pareto_priority_chart(pareto)
+    render_pareto_methodology()
+    render_pareto_detail_table(pareto)
 
 
 def _streamlit_cerebras_key() -> str | None:
@@ -654,15 +740,13 @@ def _streamlit_cerebras_key() -> str | None:
 
 
 def render_report() -> None:
-    st.header("Informe ejecutivo")
     try:
         _, metrics, pareto = get_analysis()
     except ValueError as exc:
-        st.info(str(exc))
+        render_workspace_empty_state(str(exc))
         return
     deterministic = generate_deterministic_report(metrics, pareto)
-    st.subheader("Informe generado sin IA")
-    st.markdown(deterministic)
+    render_deterministic_brief(deterministic)
     st.download_button(
         "Descargar informe determinístico",
         data=deterministic.encode("utf-8"),
@@ -671,13 +755,16 @@ def render_report() -> None:
         width="stretch",
     )
 
-    st.divider()
-    st.subheader("Informe IA opcional con Cerebras")
-    st.write(f"Modelo: `{DEFAULT_CEREBRAS_MODEL}`. La llamada ocurre sólo al pulsar el botón y nunca recibe el CSV completo.")
     context = prepare_ai_context(metrics, pareto)
     size = estimate_payload(context)
-    st.caption(f"Payload estimado: {size['characters']:,} caracteres (~{size['approximate_tokens']:,} tokens), más el prompt versionado.")
     key = _streamlit_cerebras_key()
+    st.divider()
+    render_ai_report_intro(
+        DEFAULT_CEREBRAS_MODEL,
+        size["characters"],
+        size["approximate_tokens"],
+        bool(key),
+    )
     if not key:
         st.info("CEREBRAS_API_KEY no está configurada. El informe determinístico permanece disponible.")
     if st.button("Generar informe con IA", disabled=not bool(key), type="primary", width="stretch"):
@@ -693,80 +780,58 @@ def render_report() -> None:
             st.warning("Cerebras no respondió correctamente. Se muestra el informe ejecutivo generado sin IA.")
     if "ai_report" in st.session_state:
         label = "Informe generado con IA" if st.session_state.get("ai_report_used_ai") else "Informe ejecutivo generado sin IA"
-        st.subheader(label)
-        st.markdown(st.session_state["ai_report"])
-        st.download_button(
-            "Descargar informe mostrado",
-            data=st.session_state["ai_report"].encode("utf-8"),
-            file_name="ai_business_insights.md",
-            mime="text/markdown",
-            width="stretch",
-        )
+        with st.container(border=True):
+            render_panel_heading("Resultado opcional", label)
+            st.markdown(st.session_state["ai_report"])
+            st.download_button(
+                "Descargar informe mostrado",
+                data=st.session_state["ai_report"].encode("utf-8"),
+                file_name="ai_business_insights.md",
+                mime="text/markdown",
+                width="stretch",
+            )
 
 
 def render_about() -> None:
     hybrid_enabled = get_hybrid_config().enabled
     multilingual_enabled = get_multilingual_config().enabled
     direct_enabled = get_direct_review_config().enabled
-    st.header("Acerca del proyecto")
-    st.markdown(
-        """
-        **Sentiment AI v2** combina NLP clásico reproducible con analítica de feedback y un informe generativo opcional.
-
-        - **Proyecto original:** desarrollo grupal H12-25-L-Equipo-72 de No Country.
-        - **Recuperación V6:** TF-IDF, regresión logística ternaria y artefactos originales empaquetados localmente.
-        - **Evolución v2:** nueva implementación modular de batch CSV, dashboard, Pareto e informes para portfolio.
-
-        Esta v2 se inspira funcionalmente en la aplicación histórica posterior, cuyo código no está disponible; no afirma reconstruir ese código. La atribución completa y las contribuciones verificables están en `ATTRIBUTION.md`.
-        """
+    render_about_overview(
+        direct=direct_enabled,
+        multilingual=multilingual_enabled,
+        hybrid=hybrid_enabled,
     )
-    st.subheader("Privacidad")
-    if direct_enabled:
-        st.write("La detección y el routing de textos largos se realizan localmente. Los textos EN/PT/IT detectados y los textos breves de idioma incierto pueden enviarse a Cerebras, proveedor externo, para revisión directa; se envía únicamente el comentario anonimizado, nunca otras columnas del CSV, y el original permanece en la aplicación. El informe IA agregado es una funcionalidad separada.")
-    elif multilingual_enabled:
-        st.write("La detección de idioma es local. Los comentarios que requieren traducción se anonimizan antes de enviarse a Cerebras; nunca se envían otras columnas del CSV y el texto original queda preservado en la app. Los second checks, si están habilitados por separado, comparten el mismo límite externo.")
-    elif hybrid_enabled:
-        st.write("La clasificación local ocurre primero. Sólo comentarios derivados pueden enviarse anonimizados a Cerebras para second check; nunca se envían otras columnas del CSV. El informe IA permanece separado y sólo recibe agregados.")
-    else:
-        st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. Nunca se envían comentarios, el CSV ni sus otras columnas.")
 
 
-st.markdown(
-    """
-    <style>
-    :root { --ink:#182230; --muted:#667085; --line:#E4E7EC; --accent:#3448C5; }
-    .stApp { background:radial-gradient(circle at 8% 0%,rgba(52,72,197,.08),transparent 30rem),#F8FAFC; }
-    .block-container { max-width:1180px; padding-top:2.2rem; padding-bottom:3rem; }
-    h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
-    [data-testid="stMetric"] { background:#FFF; border:1px solid var(--line); padding:1rem; border-radius:12px; }
-    [data-testid="stSidebar"] { border-right:1px solid var(--line); }
-    .product-label { color:var(--accent); font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.72rem; }
-    .product-copy { color:var(--muted); line-height:1.55; font-size:.9rem; }
-    .stButton > button[kind="primary"] { background:var(--accent); border-color:var(--accent); }
-    #MainMenu, footer { visibility:hidden; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+load_global_styles()
 
 with st.sidebar:
-    st.markdown('<div class="product-label">Customer Feedback Analytics</div>', unsafe_allow_html=True)
-    st.title("Sentiment AI v2")
-    st.markdown('<p class="product-copy">TF-IDF + regresión logística + analítica de negocio + informe IA opcional.</p>', unsafe_allow_html=True)
+    render_sidebar_brand()
     page = st.radio(
         "Navegación",
-        ["Análisis individual", "Análisis masivo", "Dashboard", "Pareto 80/20", "Informe", "Acerca del proyecto"],
+        [
+            "Análisis individual",
+            "Análisis masivo",
+            "Dashboard",
+            "Pareto 80/20",
+            "Informe ejecutivo",
+            "Acerca del proyecto",
+        ],
         label_visibility="collapsed",
+        format_func=format_navigation_label,
     )
-    if get_batch_results() is not None:
-        st.success(f"Lote activo: {len(get_batch_results()):,} comentarios")
+    batch_results = get_batch_results()
+    render_dataset_context(len(batch_results) if batch_results is not None else None)
+    render_sidebar_signature()
+
+render_page_header(page)
 
 pages = {
     "Análisis individual": render_individual_controlled,
     "Análisis masivo": render_batch_controlled,
     "Dashboard": render_dashboard,
     "Pareto 80/20": render_pareto,
-    "Informe": render_report,
+    "Informe ejecutivo": render_report,
     "Acerca del proyecto": render_about,
 }
 pages[page]()
