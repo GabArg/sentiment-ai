@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any, Callable
 
-from src.reporting import build_ai_prompt
+from src.reporting import build_ai_prompt, validate_ai_report
 
 
 DEFAULT_CEREBRAS_MODEL = "gpt-oss-120b"
@@ -41,8 +41,9 @@ def generate_cerebras_report(
             max_completion_tokens=1_200,
         )
         content = response.choices[0].message.content
-        if not isinstance(content, str) or len(content.strip()) < 80:
-            raise ValueError("The provider returned an invalid report.")
+        violations = validate_ai_report(content, context)
+        if violations:
+            raise ValueError("The provider report violates the evidence contract.")
         return content.strip()
     except AIProviderError:
         raise

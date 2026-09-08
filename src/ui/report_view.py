@@ -75,8 +75,8 @@ def render_deterministic_brief(report: str) -> None:
         )
     with terms:
         render_brief_section(
-            "Principales problemas",
-            sections["Principales problemas"],
+            "Principales términos negativos",
+            sections["Principales términos negativos"],
             kicker="Términos negativos frecuentes",
             tone="attention",
         )
@@ -85,7 +85,7 @@ def render_deterministic_brief(report: str) -> None:
         render_brief_section(
             "Pareto",
             sections["Pareto"],
-            kicker="Concentración temática",
+            kicker="Concentración léxica",
         )
     with opportunity:
         render_brief_section(

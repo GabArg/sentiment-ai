@@ -16,14 +16,14 @@ def test_structured_brief_parser_preserves_deterministic_content():
     assert list(sections) == [
         "Resumen ejecutivo",
         "Distribución",
-        "Principales problemas",
+        "Principales términos negativos",
         "Pareto",
         "Oportunidades",
         "Limitaciones",
     ]
     for heading, body in sections.items():
         assert f"## {heading}\n{body}" in report
-    assert "entrega tarde" in sections["Principales problemas"]
+    assert "entrega tarde" in sections["Principales términos negativos"]
 
 
 def test_ai_intro_escapes_model_and_keeps_privacy_boundary(monkeypatch):
