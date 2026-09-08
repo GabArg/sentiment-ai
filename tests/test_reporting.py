@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
 from src.ai_provider import generate_report_with_fallback
+from src.report_contract import build_report_facts
 from src.reporting import (
     build_ai_prompt,
+    compose_report_document,
+    estimate_payload,
+    generate_assisted_markdown,
     generate_deterministic_report,
     prepare_ai_context,
-    validate_ai_report,
 )
 
 
@@ -38,316 +42,209 @@ def pareto_fixture() -> pd.DataFrame:
     )
 
 
-def test_deterministic_report_contains_calculated_sections():
-    report = generate_deterministic_report(metrics_fixture(), pareto_fixture())
-    assert "# Informe ejecutivo determinístico" in report
-    assert "Positivos: **4** (40.0%)" in report
-    assert "entrega tarde" in report
-    assert "Limitaciones" in report
-    assert report.encode("utf-8").decode("utf-8") == report
-
-
-def test_ai_context_contains_only_aggregates():
-    pareto = pareto_fixture()
-    pareto.loc[0, "topic"] = "Ana private@example.com +54 11 5555-1234 DNI 12345678"
-    context = prepare_ai_context(metrics_fixture(), pareto)
-    serialized = str(context)
-    assert set(context) == {
-        "evidence_contract_version",
-        "total_comments",
-        "sentiment_counts",
-        "sentiment_percentages",
-        "mean_local_model_confidence",
-        "technical_high_confidence_negative_signal",
-        "negative_ngram_mention_pareto",
-        "pareto_denominator",
-        "topic_labels_withheld",
-        "available_business_objectives",
-        "available_time_comparison",
-        "methodology",
-    }
-    assert "private@example.com" not in serialized
-    assert "Ana" not in serialized and "5555" not in serialized and "12345678" not in serialized
-    assert "name" not in context and "email" not in context
-    assert context["negative_ngram_mention_pareto"][0]["topic_rank"] == 1
-    assert context["available_business_objectives"] is None
-    assert "not validated business severity" in str(
-        context["technical_high_confidence_negative_signal"]["meaning"]
-    )
-
-
-def test_ai_context_handles_imbalanced_distribution_without_lexical_terms():
-    metrics = metrics_fixture()
-    metrics.update(
+def structured_response() -> str:
+    return json.dumps(
         {
-            "total": 5,
-            "counts": {"Negativo": 0, "Neutro": 1, "Positivo": 4},
-            "percentages": {"Negativo": 0.0, "Neutro": 20.0, "Positivo": 80.0},
-            "mean_confidence": 0.51,
-            "critical_negative_count": 0,
-            "critical_confidence_threshold": 0.6,
+            "schema_version": "2.0",
+            "interpretations": [
+                {
+                    "interpretation_id": "lexical_concentration_for_review",
+                    "fact_refs": ["lexical.selected_frequency_sum"],
+                }
+            ],
+            "hypotheses": [],
+            "recommendation_ids": ["inspect_ranked_ngrams"],
+            "evidence_needed_ids": ["qualitative_comment_review"],
+            "insufficient_evidence_ids": ["no_semantic_categories"],
         }
     )
-    context = prepare_ai_context(metrics, pd.DataFrame())
-
-    assert context["sentiment_counts"]["Negativo"] == 0
-    assert context["negative_ngram_mention_pareto"] == []
-    assert context["mean_local_model_confidence"] == 0.51
-    assert context["available_business_objectives"] is None
-    assert context["available_time_comparison"] is None
 
 
-def test_prompt_makes_insufficient_evidence_and_missing_objectives_explicit():
-    metrics = metrics_fixture()
-    metrics.update(
-        {
-            "total": 1,
-            "counts": {"Negativo": 0, "Neutro": 1, "Positivo": 0},
-            "percentages": {"Negativo": 0.0, "Neutro": 100.0, "Positivo": 0.0},
-            "critical_negative_count": 0,
-        }
-    )
-    prompt = build_ai_prompt(prepare_ai_context(metrics, pd.DataFrame()))
-
-    assert '"available_business_objectives": null' in prompt
-    assert '"available_time_comparison": null' in prompt
-    assert '"negative_ngram_mention_pareto": []' in prompt
-    assert "Si falta evidencia" in prompt
-
-
-def test_versioned_prompt_forbids_inventing_metrics():
-    prompt = build_ai_prompt(prepare_ai_context(metrics_fixture(), pareto_fixture()))
-    assert "No inventes métricas" in prompt
-    assert "exclusivamente" in prompt
-    assert "## Limitaciones del análisis" in prompt
-    assert "denominador el total de menciones" in prompt
-    assert "No es accuracy, precisión" in prompt
-
-
-def valid_ai_report() -> str:
-    return """## Resumen ejecutivo
-Se analizaron 10 comentarios; la lectura requiere validación cualitativa.
-
-## Distribución observada
-Los comentarios se distribuyen en 40% negativo, 20% neutro y 40% positivo.
-
-## Señales léxicas
-El primer rango reúne 75% de las menciones de n-gramas, no de los comentarios.
-
-## Interpretación y próximos pasos
-Conviene revisar una muestra y validar manualmente posibles categorías.
-
-## Limitaciones del análisis
-La confianza local es una estimación interna, no una medida de precisión. Los n-gramas no prueban causas.
-"""
-
-
-def test_evidence_validator_accepts_supported_report():
-    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
-    assert validate_ai_report(valid_ai_report(), context) == []
-
-
-@pytest.mark.parametrize(
-    "supported_statement",
-    [
-        "La confianza local no equivale a precisión ni garantiza corrección.",
-        "Los términos frecuentes no son causas verificadas.",
-        "La señal técnica no representa casos críticos para el negocio.",
-        "El 75% corresponde a menciones de n-gramas, no de los comentarios.",
-    ],
-)
-def test_evidence_validator_accepts_explicit_evidence_limitations(supported_statement):
-    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
-    report = valid_ai_report().replace(
-        "La confianza local es una estimación interna, no una medida de precisión. Los n-gramas no prueban causas.",
-        supported_statement,
-    )
-    assert validate_ai_report(report, context) == []
-
-
-@pytest.mark.parametrize(
-    ("unsafe_sentence", "expected_violation"),
-    [
-        ("La meta es reducir reclamos un 15%.", "invented_numeric_target"),
-        ("Elevar la confianza mejorará la precisión.", "confidence_as_accuracy"),
-        (
-            "El Pareto indica que 75% de los comentarios pertenece a estos términos.",
-            "lexical_share_as_comments",
-        ),
-        ("Estas son causas raíz confirmadas.", "verified_root_cause"),
-        ("Se detectaron casos críticos.", "validated_business_severity"),
-        ("El equipo de soporte deberá resolverlo.", "invented_responsibility"),
-        ("Debe completarse en el próximo trimestre.", "invented_deadline"),
-    ],
-)
-def test_evidence_validator_rejects_unsupported_interpretations(
-    unsafe_sentence, expected_violation
-):
-    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
-    report = valid_ai_report().replace(
-        "Conviene revisar una muestra y validar manualmente posibles categorías.",
-        unsafe_sentence,
-    )
-    assert expected_violation in validate_ai_report(report, context)
-
-
-def test_evidence_validator_rejects_number_not_present_in_payload():
-    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
-    report = valid_ai_report().replace(
-        "Conviene revisar una muestra y validar manualmente posibles categorías.",
-        "Conviene alcanzar una mejora del 37%.",
-    )
-    violations = validate_ai_report(report, context)
-    assert "unsupported_percentage:37%" in violations
-
-
-def test_evidence_validator_rejects_unsupported_deadline():
-    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
-    report = valid_ai_report().replace(
-        "Conviene revisar una muestra y validar manualmente posibles categorías.",
-        "Conviene completar la revisión en 30 días.",
-    )
-    assert "unsupported_number:30" in validate_ai_report(report, context)
-
-
-def test_evidence_validator_accepts_pending_business_decisions():
-    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
-    report = valid_ai_report().replace(
-        "Conviene revisar una muestra y validar manualmente posibles categorías.",
-        "Queda pendiente definir objetivos, plazos y responsables con datos de referencia.",
-    )
-    assert validate_ai_report(report, context) == []
-
-
-def test_fallback_without_api_key(monkeypatch):
-    monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
-    report, used_ai, error = generate_report_with_fallback(
-        "deterministic", {"total": 1}, api_key=None
-    )
-    assert report == "deterministic"
-    assert used_ai is False
-    assert "not configured" in error
-
-
-def test_valid_provider_response_is_returned():
-    content = valid_ai_report()
+def client_for(content):
     response = SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
     )
-    completions = SimpleNamespace(create=lambda **kwargs: response)
-    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    return SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **kwargs: response))
+    )
+
+
+def test_deterministic_report_renders_values_from_fact_registry():
+    report = generate_deterministic_report(metrics_fixture(), pareto_fixture())
+
+    assert "# Informe ejecutivo determinístico" in report
+    assert "Positivos: **4** (40.0%)" in report
+    assert "entrega tarde" in report
+    assert "n-gramas frecuentes, no categorías semánticas" in report
+    assert report.encode("utf-8").decode("utf-8") == report
+
+
+def test_ai_context_contains_typed_aggregates_and_no_topic_labels_or_pii():
+    pareto = pareto_fixture()
+    pareto.loc[0, "topic"] = "Ana private@example.com +54 11 5555-1234 DNI 12345678"
+    context = prepare_ai_context(metrics_fixture(), pareto)
+    serialized = json.dumps(context, ensure_ascii=False)
+
+    assert set(context) == {"contract", "evidence"}
+    assert "private@example.com" not in serialized
+    assert "Ana" not in serialized and "5555" not in serialized and "12345678" not in serialized
+    assert "topic" not in serialized
+    denominator = context["evidence"]["facts"]["lexical.selected_frequency_sum"]
+    assert denominator["unit"] == "selected_ngram_document_mentions"
+    assert "not unique comments" in denominator["definition"]
+
+
+def test_structured_prompt_forbids_rewriting_facts_and_markdown():
+    prompt = build_ai_prompt(prepare_ai_context(metrics_fixture(), pareto_fixture()))
+
+    assert "únicamente con un objeto JSON" in prompt
+    assert "No calcules, combines, reformules ni repitas valores" in prompt
+    assert "no categorías ni causas" in prompt
+    assert "interpretation_id" in prompt
+
+
+def test_payload_estimate_uses_structured_context():
+    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
+    size = estimate_payload(context)
+    assert size["characters"] > 0
+    assert size["approximate_tokens"] == size["characters"] // 4
+
+
+def test_valid_provider_response_returns_typed_reading():
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
     factory_kwargs = {}
 
     def factory(**kwargs):
         factory_kwargs.update(kwargs)
-        return client
+        return client_for(structured_response())
 
-    report, used_ai, error = generate_report_with_fallback(
-        "deterministic",
-        prepare_ai_context(metrics_fixture(), pareto_fixture()),
+    reading, used_ai, error = generate_report_with_fallback(
+        context,
+        facts,
         api_key="test-key",
         client_factory=factory,
     )
-    assert report == content.strip()
+
+    assert reading is not None
+    assert reading.recommendation_ids == ("inspect_ranked_ngrams",)
     assert used_ai is True and error is None
     assert factory_kwargs == {"api_key": "test-key", "timeout": 30.0}
 
 
-@pytest.mark.parametrize(
-    "unsafe_sentence",
-    [
-        "La meta es reducir los reclamos un 15%.",
-        "Aumentar la confianza media elevará la precisión.",
-        "El Pareto demuestra que 75% de los comentarios comparte cinco problemas.",
-        "Estas son causas raíz verificadas.",
-    ],
-)
-def test_provider_uses_fallback_for_evidence_contract_violations(unsafe_sentence):
-    content = valid_ai_report().replace(
-        "Conviene revisar una muestra y validar manualmente posibles categorías.",
-        unsafe_sentence,
-    )
-    response = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
-    )
-    client = SimpleNamespace(
-        chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **kwargs: response))
-    )
-    report, used_ai, error = generate_report_with_fallback(
-        "deterministic",
+def test_composed_document_uses_local_catalog_and_matches_its_two_visible_layers():
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    reading, used_ai, _ = generate_report_with_fallback(
         prepare_ai_context(metrics_fixture(), pareto_fixture()),
+        facts,
         api_key="test-key",
-        client_factory=lambda **kwargs: client,
+        client_factory=lambda **kwargs: client_for(structured_response()),
     )
-    assert (report, used_ai) == ("deterministic", False)
-    assert error == "Cerebras could not generate a valid report."
+    deterministic = generate_deterministic_report(metrics_fixture(), pareto_fixture())
+    assisted = generate_assisted_markdown(reading)
+    composed = compose_report_document(deterministic, reading)
+
+    assert used_ai is True
+    assert composed == f"{deterministic.rstrip()}\n\n---\n\n{assisted}\n"
+    assert "Examinar los comentarios asociados" in composed
+    assert "entrega tarde" in deterministic
+    assert "entrega tarde" not in assisted
 
 
-def test_invalid_provider_response_uses_fallback():
-    response = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content="short"))]
+def test_composed_document_cannot_turn_lexical_sum_into_unique_comments():
+    pareto = pd.DataFrame(
+        {
+            "topic": ["uno", "dos", "tres", "cuatro", "cinco"],
+            "frequency": [14, 9, 8, 7, 5],
+            "percentage": [32.56, 20.93, 18.6, 16.28, 11.63],
+            "cumulative_percentage": [32.56, 53.49, 72.09, 88.37, 100.0],
+            "within_80_percent": [True, True, True, True, False],
+        }
     )
-    client = SimpleNamespace(
-        chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **kwargs: response))
-    )
-    report, used_ai, error = generate_report_with_fallback(
-        "deterministic",
-        {"total": 1},
+    facts = build_report_facts(metrics_fixture(), pareto)
+    response = json.loads(structured_response())
+    response["hypotheses"] = [
+        {
+            "hypothesis_id": "lexical_patterns_may_reflect_shared_issue",
+            "fact_refs": ["lexical.selected_frequency_sum"],
+            "validation_needed_id": "qualitative_comment_review",
+        }
+    ]
+    reading, _, _ = generate_report_with_fallback(
+        prepare_ai_context(metrics_fixture(), pareto),
+        facts,
         api_key="test-key",
-        client_factory=lambda **kwargs: client,
+        client_factory=lambda **kwargs: client_for(json.dumps(response)),
     )
-    assert report == "deterministic"
+    composed = compose_report_document(
+        generate_deterministic_report(metrics_fixture(), pareto), reading
+    )
+
+    assert facts.facts["lexical.selected_frequency_sum"].value == 43
+    assert facts.facts["lexical.selected_frequency_sum"].unit == "selected_ngram_document_mentions"
+    assert "43 comentarios" not in composed
+    assert "Hipótesis no verificada" in composed
+
+
+def test_fallback_without_api_key_returns_no_assisted_content(monkeypatch):
+    monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    reading, used_ai, error = generate_report_with_fallback(
+        prepare_ai_context(metrics_fixture(), pareto_fixture()), facts, api_key=None
+    )
+    assert reading is None
     assert used_ai is False
-    assert "valid report" in error
+    assert "not configured" in error
+
+
+@pytest.mark.parametrize(
+    "content",
+    [None, "", "not json", "{}", '{"schema_version": "1.0"}'],
+)
+def test_invalid_provider_response_uses_safe_fallback(content):
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    reading, used_ai, error = generate_report_with_fallback(
+        prepare_ai_context(metrics_fixture(), pareto_fixture()),
+        facts,
+        api_key="test-key",
+        client_factory=lambda **kwargs: client_for(content),
+    )
+    assert reading is None and used_ai is False
+    assert error == "Cerebras could not generate a valid report."
 
 
 @pytest.mark.parametrize(
     "provider_error",
     [TimeoutError("timed out"), RuntimeError("429 quota"), RuntimeError("provider failed")],
 )
-def test_provider_exceptions_use_safe_deterministic_fallback(provider_error):
+def test_provider_exceptions_use_safe_fallback_without_secret(provider_error):
     def failing_factory(**kwargs):
         raise provider_error
 
-    report, used_ai, error = generate_report_with_fallback(
-        "deterministic",
-        {"total": 1},
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    reading, used_ai, error = generate_report_with_fallback(
+        prepare_ai_context(metrics_fixture(), pareto_fixture()),
+        facts,
         api_key="secret-value-must-not-leak",
         client_factory=failing_factory,
     )
-    assert report == "deterministic"
-    assert used_ai is False
+    assert reading is None and used_ai is False
     assert error == "Cerebras could not generate a valid report."
     assert "secret-value" not in error
 
 
-@pytest.mark.parametrize("content", [None, "", "too short"])
-def test_empty_or_short_provider_responses_use_fallback(content):
-    response = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
-    )
-    client = SimpleNamespace(
-        chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **kwargs: response))
-    )
-    report, used_ai, error = generate_report_with_fallback(
-        "deterministic",
-        {"total": 1},
-        api_key="test-key",
-        client_factory=lambda **kwargs: client,
-    )
-    assert (report, used_ai) == ("deterministic", False)
-    assert error == "Cerebras could not generate a valid report."
-
-
-def test_missing_choices_uses_fallback():
+def test_missing_choices_uses_safe_fallback():
     client = SimpleNamespace(
         chat=SimpleNamespace(
             completions=SimpleNamespace(create=lambda **kwargs: SimpleNamespace(choices=[]))
         )
     )
-    report, used_ai, error = generate_report_with_fallback(
-        "deterministic", {"total": 1}, api_key="test-key", client_factory=lambda **kwargs: client
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    reading, used_ai, error = generate_report_with_fallback(
+        prepare_ai_context(metrics_fixture(), pareto_fixture()),
+        facts,
+        api_key="test-key",
+        client_factory=lambda **kwargs: client,
     )
-    assert (report, used_ai) == ("deterministic", False)
+    assert reading is None and used_ai is False
     assert error == "Cerebras could not generate a valid report."
-

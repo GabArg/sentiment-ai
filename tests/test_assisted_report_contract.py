@@ -25,9 +25,9 @@ def valid_response() -> dict[str, object]:
         ],
         "hypotheses": [
             {
-                "statement": "La concentración léxica podría orientar una revisión cualitativa inicial.",
-                "fact_refs": ["lexical.rank.1.share"],
-                "validation_needed": "Revisar los comentarios asociados y validar categorías manualmente.",
+                "hypothesis_id": "lexical_patterns_may_reflect_shared_issue",
+                "fact_refs": ["lexical.selected_frequency_sum"],
+                "validation_needed_id": "qualitative_comment_review",
             }
         ],
         "recommendation_ids": ["inspect_ranked_ngrams"],
@@ -72,7 +72,7 @@ def test_unknown_fact_reference_is_rejected():
 
 
 @pytest.mark.parametrize(
-    "unsafe_text",
+    "forbidden_field",
     [
         "Estas señales explican el 41% de los comentarios.",
         "La meta debería ser reducir la negatividad a la mitad en 30 días.",
@@ -80,16 +80,16 @@ def test_unknown_fact_reference_is_rejected():
         "Consultar https://example.com para validar.",
     ],
 )
-def test_numbers_money_percentages_and_urls_are_rejected_in_free_text(unsafe_text):
+def test_any_provider_authored_free_text_is_rejected(forbidden_field):
     response = valid_response()
-    response["hypotheses"][0]["statement"] = unsafe_text
-    with pytest.raises(ReportContractError, match="forbidden"):
+    response["hypotheses"][0]["statement"] = forbidden_field
+    with pytest.raises(ReportContractError, match="hypothesis fields"):
         parse_assisted_reading(json.dumps(response), facts())
 
 
 def test_hypothesis_without_validation_needed_is_rejected():
     response = valid_response()
-    del response["hypotheses"][0]["validation_needed"]
+    del response["hypotheses"][0]["validation_needed_id"]
     with pytest.raises(ReportContractError, match="hypothesis fields"):
         parse_assisted_reading(json.dumps(response), facts())
 

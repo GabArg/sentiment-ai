@@ -227,6 +227,90 @@ def test_report_page_renders_structured_deterministic_brief_without_external_cal
     assert len(app.get("download_button")) == 1
 
 
+def test_report_page_invalidates_legacy_free_markdown_state(monkeypatch):
+    monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.session_state["batch_results"] = pd.DataFrame(
+        {
+            "text": ["entrega tarde", "excelente atención"],
+            "sentiment": ["Negativo", "Positivo"],
+            "confidence": [0.8, 0.9],
+        }
+    )
+    app.session_state["ai_report"] = "Markdown heredado no estructurado"
+    app.session_state["ai_report_used_ai"] = True
+    app.session_state["assisted_report_v2"] = {"version": "1.0", "reading": "legacy"}
+
+    app.radio[0].set_value("Informe ejecutivo").run()
+
+    assert not app.exception
+    assert "ai_report" not in app.session_state
+    assert "ai_report_used_ai" not in app.session_state
+    assert "assisted_report_v2" not in app.session_state
+    assert "Markdown heredado no estructurado" not in " ".join(
+        item.value for item in app.markdown
+    )
+    assert len(app.get("download_button")) == 1
+
+
+def test_report_page_renders_structured_reading_and_composed_download(monkeypatch):
+    from src.report_contract import parse_assisted_reading
+    from tests.test_reporting import structured_response
+
+    calls = 0
+
+    def controlled_provider(context, facts, **kwargs):
+        nonlocal calls
+        calls += 1
+        assert "topic" not in str(context)
+        return parse_assisted_reading(structured_response(), facts), True, None
+
+    monkeypatch.setenv("CEREBRAS_API_KEY", "test-key")
+    monkeypatch.setattr("src.ai_provider.generate_report_with_fallback", controlled_provider)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.session_state["batch_results"] = pd.DataFrame(
+        {
+            "text": ["entrega tarde", "excelente atención"],
+            "sentiment": ["Negativo", "Positivo"],
+            "confidence": [0.8, 0.9],
+        }
+    )
+    app.radio[0].set_value("Informe ejecutivo").run()
+    next(button for button in app.button if button.label == "Generar informe con IA").click().run()
+
+    assert not app.exception
+    assert calls == 1
+    assert app.session_state["assisted_report_v2"]["version"] == "2.0"
+    visible = " ".join(item.value for item in app.markdown)
+    assert "Lectura asistida" in visible
+    assert "Recomendaciones condicionadas" in visible
+    assert len(app.get("download_button")) == 2
+    assert app.get("download_button")[1].label == "Descargar informe compuesto"
+
+
+def test_report_page_keeps_only_deterministic_download_on_assisted_fallback(monkeypatch):
+    monkeypatch.setenv("CEREBRAS_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "src.ai_provider.generate_report_with_fallback",
+        lambda *args, **kwargs: (None, False, "controlled invalid response"),
+    )
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.session_state["batch_results"] = pd.DataFrame(
+        {
+            "text": ["entrega tarde", "excelente atención"],
+            "sentiment": ["Negativo", "Positivo"],
+            "confidence": [0.8, 0.9],
+        }
+    )
+    app.radio[0].set_value("Informe ejecutivo").run()
+    next(button for button in app.button if button.label == "Generar informe con IA").click().run()
+
+    assert not app.exception
+    assert "assisted_report_v2" not in app.session_state
+    assert len(app.get("download_button")) == 1
+    assert any("lectura asistida no estuvo disponible" in item.value for item in app.warning)
+
+
 def _mock_translation(source_language, translated_text, *, success=True, error_code=None):
     return TranslationResult(
         source_language,

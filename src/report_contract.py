@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import json
-import re
 from typing import Any
 
 import pandas as pd
@@ -25,7 +24,7 @@ class ReportFact:
     """One locally calculated fact with explicit evidence semantics."""
 
     fact_id: str
-    value: int | float
+    value: int | float | str
     unit: str
     population: str
     definition: str
@@ -60,9 +59,9 @@ class InterpretationSelection:
 
 @dataclass(frozen=True)
 class ReportHypothesis:
-    statement: str
+    hypothesis_id: str
     fact_refs: tuple[str, ...]
-    validation_needed: str
+    validation_needed_id: str
 
 
 @dataclass(frozen=True)
@@ -81,6 +80,13 @@ class CatalogEntry:
     fact_refs: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class HypothesisCatalogEntry:
+    text: str
+    fact_refs: tuple[str, ...]
+    validation_needed_ids: tuple[str, ...]
+
+
 INTERPRETATION_CATALOG = {
     "review_negative_distribution": CatalogEntry(
         "La distribución observada justifica revisar una muestra de los comentarios clasificados como negativos.",
@@ -97,6 +103,25 @@ INTERPRETATION_CATALOG = {
     "technical_signal_requires_human_review": CatalogEntry(
         "La señal de negativos de alta confianza sirve para priorizar una revisión técnica, no para medir severidad de negocio.",
         ("technical.high_confidence_negative.count",),
+    ),
+}
+
+
+HYPOTHESIS_CATALOG = {
+    "lexical_patterns_may_reflect_shared_issue": HypothesisCatalogEntry(
+        "Los patrones léxicos observados podrían corresponder a situaciones relacionadas, pero no permiten definir una categoría.",
+        ("lexical.selected_frequency_sum",),
+        ("qualitative_comment_review", "semantic_category_validation"),
+    ),
+    "negative_predictions_may_include_model_errors": HypothesisCatalogEntry(
+        "Parte de las predicciones negativas podría requerir corrección después de una revisión humana.",
+        ("sentiment.negative.count",),
+        ("independent_labeled_evaluation", "qualitative_comment_review"),
+    ),
+    "technical_signal_may_support_sample_review": HypothesisCatalogEntry(
+        "La señal técnica podría ser útil para seleccionar una muestra de revisión, sin indicar severidad empresarial.",
+        ("technical.high_confidence_negative.count",),
+        ("qualitative_comment_review", "independent_labeled_evaluation"),
     ),
 }
 
@@ -163,6 +188,17 @@ def build_report_facts(metrics: dict[str, object], pareto: pd.DataFrame) -> Repo
             denominator_fact="dataset.total_comments",
             definition=f"Share of analyzed comments classified as {label.casefold()}.",
         )
+
+    ratio = float(metrics["positive_negative_ratio"])
+    facts["sentiment.positive_negative_ratio"] = ReportFact(
+        fact_id="sentiment.positive_negative_ratio",
+        value=ratio if ratio != float("inf") else "undefined_no_negative_comments",
+        unit="positive_comments_per_negative_comment",
+        population="comments classified by the final sentiment pipeline",
+        numerator_fact="sentiment.positive.count",
+        denominator_fact="sentiment.negative.count",
+        definition="Ratio of positive predictions to negative predictions.",
+    )
 
     facts["model.mean_local_confidence"] = ReportFact(
         fact_id="model.mean_local_confidence",
@@ -272,6 +308,17 @@ def eligible_recommendation_ids(facts: ReportFacts) -> set[str]:
     return eligible
 
 
+def eligible_hypothesis_ids(facts: ReportFacts) -> set[str]:
+    eligible = set()
+    if fact_value(facts, "sentiment.negative.count") > 0:
+        eligible.add("negative_predictions_may_include_model_errors")
+    if fact_value(facts, "lexical.selected_frequency_sum") > 0:
+        eligible.add("lexical_patterns_may_reflect_shared_issue")
+    if fact_value(facts, "technical.high_confidence_negative.count") > 0:
+        eligible.add("technical_signal_may_support_sample_review")
+    return eligible
+
+
 def eligible_insufficient_evidence_ids(facts: ReportFacts) -> set[str]:
     eligible = set()
     if fact_value(facts, "sentiment.negative.count") == 0:
@@ -293,6 +340,7 @@ def build_assisted_context(facts: ReportFacts) -> dict[str, object]:
         "contract": {
             "schema_version": ASSISTED_READING_SCHEMA_VERSION,
             "interpretation_ids": sorted(eligible_interpretation_ids(facts)),
+            "hypothesis_ids": sorted(eligible_hypothesis_ids(facts)),
             "recommendation_ids": sorted(eligible_recommendation_ids(facts)),
             "evidence_needed_ids": sorted(EVIDENCE_NEEDED_CATALOG),
             "insufficient_evidence_ids": sorted(eligible_insufficient_evidence_ids(facts)),
@@ -381,15 +429,24 @@ def _parse_hypotheses(value: object, facts: ReportFacts) -> tuple[ReportHypothes
     if not isinstance(value, list) or len(value) > MAX_HYPOTHESES:
         raise ReportContractError("Invalid hypotheses collection.")
     parsed = []
+    eligible = eligible_hypothesis_ids(facts)
     for item in value:
-        if not isinstance(item, dict) or set(item) != {"statement", "fact_refs", "validation_needed"}:
+        expected = {"hypothesis_id", "fact_refs", "validation_needed_id"}
+        if not isinstance(item, dict) or set(item) != expected:
             raise ReportContractError("Invalid hypothesis fields.")
-        statement = _validate_free_text(item["statement"], "statement", 240)
-        validation = _validate_free_text(item["validation_needed"], "validation_needed", 180)
+        hypothesis_id = item["hypothesis_id"]
+        validation_id = item["validation_needed_id"]
+        if not isinstance(hypothesis_id, str) or hypothesis_id not in eligible:
+            raise ReportContractError("Unknown or ineligible hypothesis.")
+        if not isinstance(validation_id, str):
+            raise ReportContractError("Invalid hypothesis validation identifier.")
         refs = _parse_fact_refs(item["fact_refs"], facts)
-        if not refs:
-            raise ReportContractError("A hypothesis must reference at least one fact.")
-        parsed.append(ReportHypothesis(statement, refs, validation))
+        catalog = HYPOTHESIS_CATALOG[hypothesis_id]
+        if not refs or not set(refs).issubset(set(catalog.fact_refs)):
+            raise ReportContractError("Hypothesis references do not match its catalog entry.")
+        if validation_id not in catalog.validation_needed_ids:
+            raise ReportContractError("Hypothesis validation is not eligible for its catalog entry.")
+        parsed.append(ReportHypothesis(hypothesis_id, refs, validation_id))
     return tuple(parsed)
 
 
@@ -411,13 +468,3 @@ def _parse_id_list(
     if any(item not in allowed for item in result):
         raise ReportContractError(f"Unknown or ineligible value in {field}.")
     return result
-
-
-def _validate_free_text(value: object, field: str, maximum: int) -> str:
-    if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
-        raise ReportContractError(f"Invalid {field} text.")
-    text = value.strip()
-    forbidden = r"\d|https?://|www\.|[$€£¥]|\b(?:usd|eur|ars|roi)\b|%"
-    if re.search(forbidden, text, flags=re.IGNORECASE):
-        raise ReportContractError(f"Numbers, money, percentages, ROI, and URLs are forbidden in {field}.")
-    return text

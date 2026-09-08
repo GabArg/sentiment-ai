@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 from typing import Any, Callable
 
-from src.reporting import build_ai_prompt, validate_ai_report
+from src.report_contract import AssistedReading, ReportFacts, parse_assisted_reading
+from src.reporting import build_ai_prompt
 
 
 DEFAULT_CEREBRAS_MODEL = "gpt-oss-120b"
@@ -21,10 +22,11 @@ def resolve_api_key(explicit_key: str | None = None) -> str | None:
 
 def generate_cerebras_report(
     context: dict[str, object],
+    facts: ReportFacts,
     api_key: str | None = None,
     model: str = DEFAULT_CEREBRAS_MODEL,
     client_factory: Callable[..., Any] | None = None,
-) -> str:
+) -> AssistedReading:
     key = resolve_api_key(api_key)
     if not key:
         raise AIProviderError("CEREBRAS_API_KEY is not configured.")
@@ -41,10 +43,7 @@ def generate_cerebras_report(
             max_completion_tokens=1_200,
         )
         content = response.choices[0].message.content
-        violations = validate_ai_report(content, context)
-        if violations:
-            raise ValueError("The provider report violates the evidence contract.")
-        return content.strip()
+        return parse_assisted_reading(content, facts)
     except AIProviderError:
         raise
     except Exception as exc:
@@ -52,12 +51,12 @@ def generate_cerebras_report(
 
 
 def generate_report_with_fallback(
-    deterministic_report: str,
     context: dict[str, object],
+    facts: ReportFacts,
     **provider_kwargs: Any,
-) -> tuple[str, bool, str | None]:
+) -> tuple[AssistedReading | None, bool, str | None]:
     try:
-        return generate_cerebras_report(context, **provider_kwargs), True, None
+        return generate_cerebras_report(context, facts, **provider_kwargs), True, None
     except AIProviderError as exc:
-        return deterministic_report, False, str(exc)
+        return None, False, str(exc)
 
