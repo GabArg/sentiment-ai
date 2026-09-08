@@ -88,6 +88,34 @@ def render_confidence_context_chart(results: pd.DataFrame) -> None:
     st.plotly_chart(figure, use_container_width=True)
 
 
+def render_pareto_priority_chart(pareto: pd.DataFrame) -> None:
+    """Render Pareto terms as readable horizontal priority bars."""
+    chart = pareto.iloc[::-1]
+    colors = ["#D55C47" if value else "#CBD4D4" for value in chart["within_80_percent"]]
+    figure = go.Figure(
+        go.Bar(
+            x=chart["frequency"],
+            y=chart["topic"],
+            orientation="h",
+            marker_color=colors,
+            text=chart["frequency"].map(lambda value: f"{int(value):,}"),
+            textposition="outside",
+            cliponaxis=False,
+            customdata=chart[["percentage", "cumulative_percentage", "within_80_percent"]],
+            hovertemplate=(
+                "<b>%{y}</b><br>Frecuencia: %{x:,}<br>Participación: %{customdata[0]:.1f}%"
+                "<br>Acumulado: %{customdata[1]:.1f}%<extra></extra>"
+            ),
+        )
+    )
+    height = max(340, min(620, 58 + len(chart) * 29))
+    apply_plotly_theme(figure, height=height, top_margin=12, right_margin=45)
+    figure.update_xaxes(title="Menciones en comentarios negativos", rangemode="tozero", dtick=1)
+    figure.update_yaxes(title=None, tickfont_size=11)
+    figure.update_layout(bargap=0.32)
+    st.plotly_chart(figure, use_container_width=True)
+
+
 def render_probability_chart(
     probabilities: dict[str, float],
     *,

@@ -180,6 +180,31 @@ def test_dashboard_uses_human_hybrid_traceability_labels(monkeypatch):
     assert "local_only" not in trace and "disagreement" not in trace
 
 
+def test_pareto_page_renders_priority_view_from_active_batch():
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.session_state["batch_results"] = pd.DataFrame(
+        {
+            "text": [
+                "entrega tarde paquete",
+                "entrega tarde demora",
+                "soporte no responde",
+                "excelente atención",
+            ],
+            "sentiment": ["Negativo", "Negativo", "Negativo", "Positivo"],
+            "confidence": [0.9, 0.8, 0.85, 0.9],
+        }
+    )
+    app.radio[0].set_value("Pareto 80/20").run()
+
+    assert not app.exception
+    visible = " ".join(item.value for item in app.markdown)
+    assert "Términos en el bloque 80/20" in visible
+    assert "Ranking del primer bloque del Pareto" in visible
+    assert "ni causas verificadas" in visible
+    assert len(app.get("plotly_chart")) == 1
+    assert len(app.dataframe) == 1
+
+
 def _mock_translation(source_language, translated_text, *, success=True, error_code=None):
     return TranslationResult(
         source_language,

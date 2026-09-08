@@ -9,8 +9,6 @@ from __future__ import annotations
 import os
 
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import streamlit as st
 
 from src.ai_provider import DEFAULT_CEREBRAS_MODEL, generate_report_with_fallback
@@ -45,6 +43,7 @@ from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
 from src.ui import (
     build_dashboard_view_model,
+    build_pareto_view_model,
     build_traceability_text,
     format_navigation_label,
     load_global_styles,
@@ -58,7 +57,12 @@ from src.ui import (
     render_dashboard_kpis,
     render_dataset_reading,
     render_panel_heading,
+    render_pareto_detail_table,
+    render_pareto_methodology,
+    render_pareto_priority_chart,
+    render_pareto_summary,
     render_probability_chart,
+    render_priority_ranking,
     render_sentiment_distribution_chart,
     render_dataset_context,
     render_page_header,
@@ -67,7 +71,6 @@ from src.ui import (
     render_sidebar_signature,
     render_workspace_empty_state,
 )
-from src.ui.charts import SENTIMENT_COLORS, apply_plotly_theme
 
 
 MAX_TEXT_LENGTH = 5_000
@@ -606,31 +609,31 @@ def render_dashboard() -> None:
 
 
 def render_pareto() -> None:
-    st.write("Los temas son n-gramas presentes en comentarios negativos. Se cuentan una vez por comentario para evitar que la repetición dentro de un texto infle la frecuencia.")
     try:
-        _, _, pareto = get_analysis()
+        _, metrics, pareto = get_analysis()
     except ValueError as exc:
-        st.info(str(exc))
+        render_workspace_empty_state(str(exc))
         return
     if pareto.empty:
-        st.info("No hay suficientes comentarios negativos para extraer temas.")
+        render_workspace_empty_state(
+            "El lote no contiene suficientes términos negativos repetidos para construir el Pareto."
+        )
         return
-    display = pareto.copy()
-    display["percentage"] = display["percentage"].map(lambda value: f"{value:.1f}%")
-    display["cumulative_percentage"] = display["cumulative_percentage"].map(lambda value: f"{value:.1f}%")
-    display["within_80_percent"] = display["within_80_percent"].map({True: "Sí", False: "No"})
-    display.columns = ["Tema", "Frecuencia", "Porcentaje", "Acumulado", "Dentro del 80%"]
-    st.dataframe(display, width="stretch", hide_index=True)
-
-    figure = make_subplots(specs=[[{"secondary_y": True}]])
-    figure.add_trace(go.Bar(x=pareto["topic"], y=pareto["frequency"], name="Frecuencia", marker_color="#4F46E5"), secondary_y=False)
-    figure.add_trace(go.Scatter(x=pareto["topic"], y=pareto["cumulative_percentage"], name="% acumulado", mode="lines+markers", line=dict(color="#D92D20", width=3)), secondary_y=True)
-    figure.add_hline(y=80, line_dash="dash", line_color="#667085", annotation_text="80%", secondary_y=True)
-    figure.update_yaxes(title_text="Frecuencia", secondary_y=False)
-    figure.update_yaxes(title_text="Porcentaje acumulado", range=[0, 105], ticksuffix="%", secondary_y=True)
-    apply_plotly_theme(figure, height=520, top_margin=30, right_margin=0, showlegend=True)
-    figure.update_layout(xaxis_tickangle=-35)
-    st.plotly_chart(figure, use_container_width=True)
+    view = build_pareto_view_model(metrics, pareto)
+    render_pareto_summary(view)
+    ranking, chart = st.columns([0.85, 1.4], gap="medium")
+    with ranking:
+        render_priority_ranking(view)
+    with chart:
+        with st.container(border=True):
+            render_panel_heading(
+                "Distribución acumulada",
+                "Frecuencia de términos negativos",
+                "Coral: primer bloque del Pareto · Gris: cola restante.",
+            )
+            render_pareto_priority_chart(pareto)
+    render_pareto_methodology()
+    render_pareto_detail_table(pareto)
 
 
 def _streamlit_cerebras_key() -> str | None:

@@ -3,6 +3,7 @@
 from .charts import (
     render_confidence_context_chart,
     render_probability_chart,
+    render_pareto_priority_chart,
     render_sentiment_distribution_chart,
 )
 from .dashboard import (
@@ -24,6 +25,13 @@ from .components import (
     render_sidebar_footer,
 )
 from .styles import load_global_styles
+from .pareto_view import (
+    build_pareto_view_model,
+    render_pareto_detail_table,
+    render_pareto_methodology,
+    render_pareto_summary,
+    render_priority_ranking,
+)
 from .shell import (
     format_navigation_label,
     render_dataset_context,
@@ -38,6 +46,7 @@ __all__ = [
     "format_navigation_label",
     "build_dashboard_view_model",
     "build_traceability_text",
+    "build_pareto_view_model",
     "render_batch_csv_preview",
     "render_batch_kpi_cards",
     "render_batch_results_header",
@@ -48,7 +57,12 @@ __all__ = [
     "render_dashboard_kpis",
     "render_dataset_reading",
     "render_panel_heading",
+    "render_pareto_detail_table",
+    "render_pareto_methodology",
+    "render_pareto_priority_chart",
+    "render_pareto_summary",
     "render_probability_chart",
+    "render_priority_ranking",
     "render_sentiment_distribution_chart",
     "render_product_header",
     "render_dataset_context",
