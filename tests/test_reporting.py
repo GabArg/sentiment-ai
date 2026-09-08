@@ -248,3 +248,117 @@ def test_missing_choices_uses_safe_fallback():
     )
     assert reading is None and used_ai is False
     assert error == "Cerebras could not generate a valid report."
+
+
+def test_fallback_log_distinguishes_contract_rejection_without_content(caplog):
+    secret = "secret-value-must-not-leak"
+    generated_content = "not json private generated text"
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+
+    with caplog.at_level("WARNING", logger="src.ai_provider"):
+        reading, used_ai, error = generate_report_with_fallback(
+            prepare_ai_context(metrics_fixture(), pareto_fixture()),
+            facts,
+            api_key=secret,
+            client_factory=lambda **kwargs: client_for(generated_content),
+        )
+
+    assert reading is None and used_ai is False
+    assert error == "Cerebras could not generate a valid report."
+    diagnostic = caplog.messages[-1]
+    assert "stage=contract_validation" in diagnostic
+    assert "code=contract_response_rejected" in diagnostic
+    assert "exception_type=ReportContractError" in diagnostic
+    assert "contract_version=2.0" in diagnostic
+    assert secret not in diagnostic
+    assert generated_content not in diagnostic
+
+
+def test_fallback_log_records_safe_http_diagnostics(caplog):
+    class RateLimitError(RuntimeError):
+        status_code = 429
+
+    def client_with_failed_request(**kwargs):
+        def create(**request_kwargs):
+            raise RateLimitError("sensitive provider response")
+
+        return SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+        )
+
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    with caplog.at_level("WARNING", logger="src.ai_provider"):
+        reading, used_ai, _ = generate_report_with_fallback(
+            prepare_ai_context(metrics_fixture(), pareto_fixture()),
+            facts,
+            api_key="test-key",
+            client_factory=client_with_failed_request,
+        )
+
+    assert reading is None and used_ai is False
+    diagnostic = caplog.messages[-1]
+    assert "stage=provider_request" in diagnostic
+    assert "code=provider_request_failed" in diagnostic
+    assert "exception_type=RateLimitError" in diagnostic
+    assert "http_status=429" in diagnostic
+    assert "sensitive provider response" not in diagnostic
+
+
+def test_fallback_log_distinguishes_client_initialization(caplog):
+    def failing_factory(**kwargs):
+        raise RuntimeError("private initialization detail")
+
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    with caplog.at_level("WARNING", logger="src.ai_provider"):
+        generate_report_with_fallback(
+            prepare_ai_context(metrics_fixture(), pareto_fixture()),
+            facts,
+            api_key="test-key",
+            client_factory=failing_factory,
+        )
+
+    diagnostic = caplog.messages[-1]
+    assert "stage=client_initialization" in diagnostic
+    assert "code=client_initialization_failed" in diagnostic
+    assert "private initialization detail" not in diagnostic
+
+
+def test_fallback_log_distinguishes_invalid_response_shape(caplog):
+    client = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(create=lambda **kwargs: SimpleNamespace(choices=[]))
+        )
+    )
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    with caplog.at_level("WARNING", logger="src.ai_provider"):
+        generate_report_with_fallback(
+            prepare_ai_context(metrics_fixture(), pareto_fixture()),
+            facts,
+            api_key="test-key",
+            client_factory=lambda **kwargs: client,
+        )
+
+    diagnostic = caplog.messages[-1]
+    assert "stage=provider_response" in diagnostic
+    assert "code=invalid_response_shape" in diagnostic
+
+
+@pytest.mark.parametrize(
+    ("content", "expected_code"),
+    [(None, "missing_response_content"), ("", "missing_response_content")],
+)
+def test_fallback_log_distinguishes_missing_provider_content(
+    content, expected_code, caplog
+):
+    facts = build_report_facts(metrics_fixture(), pareto_fixture())
+    with caplog.at_level("WARNING", logger="src.ai_provider"):
+        generate_report_with_fallback(
+            prepare_ai_context(metrics_fixture(), pareto_fixture()),
+            facts,
+            api_key="test-key",
+            client_factory=lambda **kwargs: client_for(content),
+        )
+
+    diagnostic = caplog.messages[-1]
+    assert "stage=provider_response" in diagnostic
+    assert f"code={expected_code}" in diagnostic
