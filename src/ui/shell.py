@@ -6,6 +6,8 @@ import html
 
 import streamlit as st
 
+from .html import render_html
+
 
 PAGE_META = {
     "Análisis individual": (
@@ -66,7 +68,7 @@ def format_navigation_label(page: str) -> str:
 
 def render_sidebar_brand() -> None:
     """Render product identity and the information architecture legend."""
-    st.markdown(
+    render_html(
         """
         <div class="workspace-brand">
             <div class="workspace-mark" aria-hidden="true">
@@ -77,11 +79,7 @@ def render_sidebar_brand() -> None:
                 <span>Customer intelligence</span>
             </div>
         </div>
-        <div class="workspace-nav-groups" aria-label="Áreas del workspace">
-            <span>Analizar</span><i></i><span>Entender</span><i></i><span>Comunicar</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -95,7 +93,7 @@ def render_dataset_context(batch_count: int | None) -> None:
         title = "Lote de la sesión"
         detail = f"{batch_count:,} comentarios analizados"
         state_class = "is-active"
-    st.markdown(
+    render_html(
         f"""
         <section class="workspace-dataset {state_class}">
             <div class="workspace-dataset-label"><i></i> Dataset activo</div>
@@ -103,42 +101,34 @@ def render_dataset_context(batch_count: int | None) -> None:
             <span>{html.escape(detail)}</span>
             <small>Session state · procesamiento local-first</small>
         </section>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 def render_sidebar_signature() -> None:
     """Render the compact workspace footer."""
-    st.markdown(
+    render_html(
         """
         <div class="workspace-signature">
             <span>SA</span>
             <div><strong>Workspace local</strong><small>Privacidad primero</small></div>
             <b>v2 · RC</b>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 def render_page_header(page: str) -> None:
     """Render the contextual page heading for the active route."""
     eyebrow, title, description = PAGE_META[page]
-    st.markdown(
-        f'<div class="workspace-page-eyebrow">{html.escape(eyebrow)}</div>',
-        unsafe_allow_html=True,
-    )
+    render_html(f'<div class="workspace-page-eyebrow">{html.escape(eyebrow)}</div>')
     st.header(title, anchor=f"workspace-page-{PAGE_ANCHORS[page]}")
-    st.markdown(
-        f'<div class="workspace-page-description">{html.escape(description)}</div>',
-        unsafe_allow_html=True,
-    )
+    render_html(f'<div class="workspace-page-description">{html.escape(description)}</div>')
 
 
 def render_workspace_empty_state(message: str) -> None:
     """Render a consistent empty analytics state without decorative actions."""
-    st.markdown(
+    render_html(
         f"""
         <section class="workspace-empty-state">
             <div class="workspace-empty-icon">▦</div>
@@ -147,6 +137,5 @@ def render_workspace_empty_state(message: str) -> None:
                 <p>{html.escape(message)}</p>
             </div>
         </section>
-        """,
-        unsafe_allow_html=True,
+        """
     )

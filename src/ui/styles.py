@@ -19,7 +19,10 @@ def load_global_styles() -> None:
             --shadow:0 1px 2px rgba(16,36,62,.04),0 12px 30px rgba(16,36,62,.055);
         }
         .stApp { background:var(--canvas); color:var(--ink); }
-        .block-container { max-width:1440px; padding:1.85rem clamp(1.25rem,3.2vw,3.25rem) 4rem; }
+        .block-container {
+            width:100%; max-width:1520px;
+            padding:1.85rem clamp(1.25rem,2.5vw,2.5rem) 4rem;
+        }
         h1,h2,h3 { color:var(--navy); letter-spacing:-.025em; }
         p, [data-testid="stCaptionContainer"] { color:var(--muted); }
         [data-testid="stMetric"] {
@@ -28,7 +31,9 @@ def load_global_styles() -> None:
         }
         [data-testid="stMetricLabel"] { color:var(--muted); }
         [data-testid="stMetricValue"] { color:var(--navy); letter-spacing:-.025em; }
-        [data-testid="stSidebar"] { background:var(--navy); border-right:0; }
+        [data-testid="stSidebar"] {
+            min-width:16rem; max-width:16rem; background:var(--navy); border-right:0;
+        }
         [data-testid="stForm"], [data-testid="stFileUploader"] {
             background:var(--surface); border:1px solid var(--line);
             border-radius:var(--radius); padding:1.15rem; box-shadow:var(--shadow);
@@ -116,27 +121,41 @@ def load_global_styles() -> None:
         .workspace-mark i:nth-child(3) { height:11px; }
         .workspace-brand strong { display:block; color:#FFF; font-size:.94rem; line-height:1.2; }
         .workspace-brand span { display:block; color:#8DA2B4; font-size:.66rem; margin-top:.15rem; }
-        .workspace-nav-groups {
-            display:flex; align-items:center; gap:.35rem; padding:0 .45rem .7rem;
-            color:#6F899F; font-size:.57rem; font-weight:750; letter-spacing:.09em;
-            text-transform:uppercase;
+        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] {
+            gap:.18rem; padding-top:.55rem;
         }
-        .workspace-nav-groups i { width:3px; height:3px; border-radius:50%; background:#49647B; }
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] { gap:.2rem; }
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label {
+        [data-testid="stSidebar"] label[data-baseweb="radio"] {
             min-height:2.35rem; padding:.48rem .65rem; color:#AEBECB; border-radius:8px;
-            font-size:.79rem; border:1px solid transparent;
+            font-size:.79rem; border:1px solid transparent; position:relative;
         }
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label:hover {
+        [data-testid="stSidebar"] label[data-baseweb="radio"] [aria-hidden="true"] { display:none; }
+        [data-testid="stSidebar"] label[data-baseweb="radio"] input[type="radio"] {
+            position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;
+        }
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:hover {
             color:#FFF; background:rgba(255,255,255,.055);
         }
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked) {
             color:#FFF; background:#1E466B; border-color:rgba(255,255,255,.035);
             box-shadow:inset 2px 0 0 #4FB69C;
         }
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label span {
-            color:inherit;
+        [data-testid="stSidebar"] label[data-baseweb="radio"] span { color:inherit; }
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Dashboard"]),
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Informe ejecutivo"]),
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Acerca del proyecto"]) {
+            margin-top:1.25rem;
         }
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Análisis individual"])::before,
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Dashboard"])::before,
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Informe ejecutivo"])::before,
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Acerca del proyecto"])::before {
+            position:absolute; left:.15rem; top:-1rem; color:#6F899F; font-size:.56rem;
+            font-weight:800; letter-spacing:.13em; text-transform:uppercase;
+        }
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Análisis individual"])::before { content:"Analizar"; }
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Dashboard"])::before { content:"Entender"; }
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Informe ejecutivo"])::before { content:"Comunicar"; }
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input[value="Acerca del proyecto"])::before { content:"Proyecto"; }
         .workspace-dataset {
             margin:1.3rem .1rem .75rem; padding:.8rem; border-radius:11px;
             border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.045);
@@ -208,21 +227,6 @@ def load_global_styles() -> None:
             font-weight: 750;
             color: var(--navy);
             letter-spacing: -.02em;
-        }
-
-        /* Estilos generales del radio (sin selectores posicionales) */
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label {
-            padding: 0.35rem 0.6rem;
-            border-radius: 8px;
-            transition: background .15s ease;
-        }
-        [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] > label:hover {
-            background: rgba(79, 70, 229, .05);
         }
 
         /* Sidebar Discrete Batch Status & Footer */

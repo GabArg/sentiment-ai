@@ -8,6 +8,8 @@ import math
 import pandas as pd
 import streamlit as st
 
+from .html import render_html
+
 
 def build_dashboard_view_model(
     metrics: dict[str, object], pareto: pd.DataFrame
@@ -98,21 +100,20 @@ def render_dashboard_kpis(view: dict[str, object]) -> None:
         """
         for label, value, detail, tone in cards
     )
-    st.markdown(f'<section class="overview-kpi-grid">{markup}</section>', unsafe_allow_html=True)
+    render_html(f'<section class="overview-kpi-grid">{markup}</section>')
 
 
 def render_panel_heading(kicker: str, title: str, description: str | None = None) -> None:
     """Render a consistent internal heading for an analytics panel."""
     description_markup = f"<p>{html.escape(description)}</p>" if description else ""
-    st.markdown(
+    render_html(
         f"""
         <div class="overview-panel-heading">
             <span>{html.escape(kicker)}</span>
             <h3>{html.escape(title)}</h3>
             {description_markup}
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -152,15 +153,14 @@ def render_attention_panel(view: dict[str, object]) -> None:
         </div>
         <div class="overview-topic-list">{topics_markup}</div>
         """
-    st.markdown(
+    render_html(
         f"""
         <section class="overview-attention">
             <div class="overview-attention-title"><span>Prioridad operativa</span><h3>Qué requiere atención</h3></div>
             {body}
             <p class="overview-method-note">Los temas son n-gramas frecuentes, no causas verificadas.</p>
         </section>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -178,7 +178,7 @@ def render_dataset_reading(view: dict[str, object], traceability: str | None) ->
     else:
         pareto_value = "—"
         pareto_detail = "sin Pareto disponible para este lote"
-    st.markdown(
+    render_html(
         f"""
         <section class="overview-reading">
             <div class="overview-attention-title"><span>Lectura del lote</span><h3>Contexto para decidir</h3></div>
@@ -187,8 +187,7 @@ def render_dataset_reading(view: dict[str, object], traceability: str | None) ->
                 <div><strong>{html.escape(pareto_value)}</strong><span>{html.escape(pareto_detail)}</span></div>
             </div>
         </section>
-        """,
-        unsafe_allow_html=True,
+        """
     )
     if traceability:
         st.caption(traceability)
