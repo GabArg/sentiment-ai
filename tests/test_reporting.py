@@ -148,6 +148,24 @@ def test_evidence_validator_accepts_supported_report():
 
 
 @pytest.mark.parametrize(
+    "supported_statement",
+    [
+        "La confianza local no equivale a precisión ni garantiza corrección.",
+        "Los términos frecuentes no son causas verificadas.",
+        "La señal técnica no representa casos críticos para el negocio.",
+        "El 75% corresponde a menciones de n-gramas, no de los comentarios.",
+    ],
+)
+def test_evidence_validator_accepts_explicit_evidence_limitations(supported_statement):
+    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
+    report = valid_ai_report().replace(
+        "La confianza local es una estimación interna, no una medida de precisión. Los n-gramas no prueban causas.",
+        supported_statement,
+    )
+    assert validate_ai_report(report, context) == []
+
+
+@pytest.mark.parametrize(
     ("unsafe_sentence", "expected_violation"),
     [
         ("La meta es reducir reclamos un 15%.", "invented_numeric_target"),
@@ -158,6 +176,8 @@ def test_evidence_validator_accepts_supported_report():
         ),
         ("Estas son causas raíz confirmadas.", "verified_root_cause"),
         ("Se detectaron casos críticos.", "validated_business_severity"),
+        ("El equipo de soporte deberá resolverlo.", "invented_responsibility"),
+        ("Debe completarse en el próximo trimestre.", "invented_deadline"),
     ],
 )
 def test_evidence_validator_rejects_unsupported_interpretations(
@@ -188,6 +208,15 @@ def test_evidence_validator_rejects_unsupported_deadline():
         "Conviene completar la revisión en 30 días.",
     )
     assert "unsupported_number:30" in validate_ai_report(report, context)
+
+
+def test_evidence_validator_accepts_pending_business_decisions():
+    context = prepare_ai_context(metrics_fixture(), pareto_fixture())
+    report = valid_ai_report().replace(
+        "Conviene revisar una muestra y validar manualmente posibles categorías.",
+        "Queda pendiente definir objetivos, plazos y responsables con datos de referencia.",
+    )
+    assert validate_ai_report(report, context) == []
 
 
 def test_fallback_without_api_key(monkeypatch):

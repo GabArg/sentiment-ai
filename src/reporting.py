@@ -162,15 +162,19 @@ def validate_ai_report(report: str, context: dict[str, object]) -> list[str]:
     ]
 
     forbidden_patterns = {
-        "invented_numeric_target": r"(?:reducir|aumentar|mejorar|alcanzar|objetivo|meta).{0,60}\d+(?:[.,]\d+)?\s*%",
-        "confidence_as_accuracy": r"(?:confianza.{0,40}(?:equivale|mide|mejora|mejorar[aá]|aumenta|eleva|garantiza).{0,30}(?:accuracy|precisi[oó]n|exactitud)|(?:accuracy|precisi[oó]n|exactitud).{0,40}(?:depende|equivale).{0,30}confianza)",
-        "lexical_share_as_comments": r"(?:pareto|n-?gramas?|menciones?|t[eé]rminos?).{0,90}\d+(?:[.,]\d+)?\s*%.{0,40}(?:comentarios?|casos?)",
+        "invented_numeric_target": r"(?:reducir|aumentar|mejorar|alcanzar|objetivo|meta)[^.!?\n]{0,60}\d+(?:[.,]\d+)?\s*%",
+        "confidence_as_accuracy": r"(?:confianza[^.!?\n]{0,40}(?:equivale|mide|mejora|mejorar[aá]|aumenta|eleva|garantiza)[^.!?\n]{0,30}(?:accuracy|precisi[oó]n|exactitud)|(?:accuracy|precisi[oó]n|exactitud)[^.!?\n]{0,40}(?:depende|equivale)[^.!?\n]{0,30}confianza)",
+        "lexical_share_as_comments": r"(?:pareto|n-?gramas?|menciones?|t[eé]rminos?)[^.!?\n]{0,90}\d+(?:[.,]\d+)?\s*%[^.!?\n]{0,40}(?:comentarios?|casos?)",
         "verified_root_cause": r"(?:causas?\s+ra[ií]z\s+(?:verificadas?|confirmadas?|son)|causas?\s+(?:verificadas?|confirmadas?))",
         "validated_business_severity": r"(?:casos?|comentarios?|problemas?)\s+cr[ií]ticos",
+        "invented_responsibility": r"(?:equipo|[aá]rea|gerencia|departamento)[^.!?\n]{0,50}(?:debe|deber[aá]|tendr[aá]\s+que|ser[aá]\s+responsable)",
+        "invented_deadline": r"(?:en|dentro\s+de)\s+(?:el\s+)?(?:pr[oó]xim[oa]\s+)?(?:d[ií]as?|semanas?|meses?|trimestres?|semestres?|a[nñ]os?)\b",
     }
     for code, pattern in forbidden_patterns.items():
-        if re.search(pattern, normalized, flags=re.DOTALL):
-            violations.append(code)
+        for match in re.finditer(pattern, normalized):
+            if not _is_explicitly_negated(normalized, match.start(), match.end()):
+                violations.append(code)
+                break
 
     allowed_percentages = _allowed_percentages(context)
     percentage_spans: list[tuple[int, int]] = []
@@ -189,6 +193,19 @@ def validate_ai_report(report: str, context: dict[str, object]) -> list[str]:
             violations.append(f"unsupported_number:{match.group()}")
 
     return list(dict.fromkeys(violations))
+
+
+def _is_explicitly_negated(text: str, start: int, end: int) -> bool:
+    """Recognize direct denials without treating every nearby ``no`` as safe."""
+    sentence_start = max(text.rfind(mark, 0, start) for mark in (".", "!", "?", "\n")) + 1
+    sentence_ends = [position for mark in (".", "!", "?", "\n") if (position := text.find(mark, end)) >= 0]
+    sentence_end = min(sentence_ends) if sentence_ends else len(text)
+    window = text[sentence_start:sentence_end]
+    denied_relations = (
+        r"\bno\s+(?:es|son|equivale|mide|mejora|mejorará|aumenta|eleva|garantiza|"
+        r"representa|implica|constituye|constituyen|corresponde|pertenece|de(?:l| la| los| las)?)\b"
+    )
+    return re.search(denied_relations, window) is not None
 
 
 def _allowed_percentages(context: dict[str, object]) -> set[float]:
