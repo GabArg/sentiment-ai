@@ -101,6 +101,11 @@ def test_structured_prompt_forbids_rewriting_facts_and_markdown():
     assert "No calcules, combines, reformules ni repitas valores" in prompt
     assert "no categorías ni causas" in prompt
     assert "interpretation_id" in prompt
+    assert "CONTEXTO.contract.interpretations" in prompt
+    assert "CONTEXTO.contract.hypotheses" in prompt
+    assert "no agregues campos" in prompt
+    assert "No repitas IDs ni elementos" in prompt
+    assert "lista vacía" in prompt
 
 
 def test_payload_estimate_uses_structured_context():
@@ -267,7 +272,7 @@ def test_fallback_log_distinguishes_contract_rejection_without_content(caplog):
     assert error == "Cerebras could not generate a valid report."
     diagnostic = caplog.messages[-1]
     assert "stage=contract_validation" in diagnostic
-    assert "code=contract_response_rejected" in diagnostic
+    assert "code=invalid_json" in diagnostic
     assert "exception_type=ReportContractError" in diagnostic
     assert "contract_version=2.0" in diagnostic
     assert secret not in diagnostic

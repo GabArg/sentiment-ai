@@ -13,10 +13,17 @@ ASSISTED_READING_SCHEMA_VERSION = "2.0"
 MAX_INTERPRETATIONS = 3
 MAX_HYPOTHESES = 2
 MAX_RECOMMENDATIONS = 3
+MAX_EVIDENCE_NEEDED = 4
+MAX_INSUFFICIENT_EVIDENCE = 4
+MAX_FACT_REFS = 4
 
 
 class ReportContractError(ValueError):
     """A provider response does not satisfy the assisted-reading contract."""
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 @dataclass(frozen=True)
@@ -343,11 +350,43 @@ def eligible_insufficient_evidence_ids(facts: ReportFacts) -> set[str]:
 
 def build_assisted_context(facts: ReportFacts) -> dict[str, object]:
     """Expose facts and only the catalog choices eligible for this batch."""
+    interpretation_ids = eligible_interpretation_ids(facts)
+    hypothesis_ids = eligible_hypothesis_ids(facts)
     return {
         "contract": {
             "schema_version": ASSISTED_READING_SCHEMA_VERSION,
-            "interpretation_ids": sorted(eligible_interpretation_ids(facts)),
-            "hypothesis_ids": sorted(eligible_hypothesis_ids(facts)),
+            "response": {
+                "required_fields": [
+                    "schema_version",
+                    "interpretations",
+                    "hypotheses",
+                    "recommendation_ids",
+                    "evidence_needed_ids",
+                    "insufficient_evidence_ids",
+                ],
+                "additional_fields_allowed": False,
+                "empty_lists_allowed": True,
+                "duplicate_items_allowed": False,
+                "interpretation_fields": ["interpretation_id", "fact_refs"],
+                "hypothesis_fields": [
+                    "hypothesis_id",
+                    "fact_refs",
+                    "validation_needed_id",
+                ],
+            },
+            "interpretations": {
+                item_id: {"fact_refs": list(INTERPRETATION_CATALOG[item_id].fact_refs)}
+                for item_id in sorted(interpretation_ids)
+            },
+            "hypotheses": {
+                item_id: {
+                    "fact_refs": list(HYPOTHESIS_CATALOG[item_id].fact_refs),
+                    "validation_needed_ids": list(
+                        HYPOTHESIS_CATALOG[item_id].validation_needed_ids
+                    ),
+                }
+                for item_id in sorted(hypothesis_ids)
+            },
             "recommendation_ids": sorted(eligible_recommendation_ids(facts)),
             "evidence_needed_ids": sorted(EVIDENCE_NEEDED_CATALOG),
             "insufficient_evidence_ids": sorted(eligible_insufficient_evidence_ids(facts)),
@@ -355,6 +394,9 @@ def build_assisted_context(facts: ReportFacts) -> dict[str, object]:
                 "interpretations": MAX_INTERPRETATIONS,
                 "hypotheses": MAX_HYPOTHESES,
                 "recommendations": MAX_RECOMMENDATIONS,
+                "evidence_needed": MAX_EVIDENCE_NEEDED,
+                "insufficient_evidence": MAX_INSUFFICIENT_EVIDENCE,
+                "fact_refs_per_item": MAX_FACT_REFS,
             },
         },
         "evidence": facts.as_ai_payload(),
@@ -366,9 +408,13 @@ def parse_assisted_reading(raw: str, facts: ReportFacts) -> AssistedReading:
     try:
         data = json.loads(raw)
     except (TypeError, json.JSONDecodeError) as exc:
-        raise ReportContractError("The provider response is not valid JSON.") from exc
+        raise ReportContractError(
+            "The provider response is not valid JSON.", code="invalid_json"
+        ) from exc
     if not isinstance(data, dict):
-        raise ReportContractError("The provider response must be an object.")
+        raise ReportContractError(
+            "The provider response must be an object.", code="invalid_root_type"
+        )
 
     expected_keys = {
         "schema_version",
@@ -379,9 +425,15 @@ def parse_assisted_reading(raw: str, facts: ReportFacts) -> AssistedReading:
         "insufficient_evidence_ids",
     }
     if set(data) != expected_keys:
-        raise ReportContractError("The provider response has missing or additional fields.")
+        raise ReportContractError(
+            "The provider response has missing or additional fields.",
+            code="invalid_root_fields",
+        )
     if data["schema_version"] != ASSISTED_READING_SCHEMA_VERSION:
-        raise ReportContractError("Unsupported assisted-reading schema version.")
+        raise ReportContractError(
+            "Unsupported assisted-reading schema version.",
+            code="invalid_schema_version",
+        )
 
     interpretations = _parse_interpretations(data["interpretations"], facts)
     hypotheses = _parse_hypotheses(data["hypotheses"], facts)
@@ -395,13 +447,13 @@ def parse_assisted_reading(raw: str, facts: ReportFacts) -> AssistedReading:
         data["evidence_needed_ids"],
         "evidence_needed_ids",
         set(EVIDENCE_NEEDED_CATALOG),
-        4,
+        MAX_EVIDENCE_NEEDED,
     )
     insufficient_ids = _parse_id_list(
         data["insufficient_evidence_ids"],
         "insufficient_evidence_ids",
         eligible_insufficient_evidence_ids(facts),
-        4,
+        MAX_INSUFFICIENT_EVIDENCE,
     )
     return AssistedReading(
         schema_version=ASSISTED_READING_SCHEMA_VERSION,
@@ -415,56 +467,97 @@ def parse_assisted_reading(raw: str, facts: ReportFacts) -> AssistedReading:
 
 def _parse_interpretations(value: object, facts: ReportFacts) -> tuple[InterpretationSelection, ...]:
     if not isinstance(value, list) or len(value) > MAX_INTERPRETATIONS:
-        raise ReportContractError("Invalid interpretations collection.")
+        raise ReportContractError(
+            "Invalid interpretations collection.", code="invalid_interpretations"
+        )
     eligible = eligible_interpretation_ids(facts)
     parsed = []
     for item in value:
         if not isinstance(item, dict) or set(item) != {"interpretation_id", "fact_refs"}:
-            raise ReportContractError("Invalid interpretation fields.")
+            raise ReportContractError(
+                "Invalid interpretation fields.", code="invalid_interpretation_fields"
+            )
         interpretation_id = item["interpretation_id"]
         if not isinstance(interpretation_id, str) or interpretation_id not in eligible:
-            raise ReportContractError("Unknown or ineligible interpretation.")
+            raise ReportContractError(
+                "Unknown or ineligible interpretation.", code="ineligible_interpretation"
+            )
         refs = _parse_fact_refs(item["fact_refs"], facts)
         allowed_refs = set(INTERPRETATION_CATALOG[interpretation_id].fact_refs)
         if not refs or not set(refs).issubset(allowed_refs):
-            raise ReportContractError("Interpretation references do not match its catalog entry.")
+            raise ReportContractError(
+                "Interpretation references do not match its catalog entry.",
+                code="invalid_interpretation_fact_refs",
+            )
         parsed.append(InterpretationSelection(interpretation_id, refs))
     if len({item.interpretation_id for item in parsed}) != len(parsed):
-        raise ReportContractError("Duplicate interpretations are not allowed.")
+        raise ReportContractError(
+            "Duplicate interpretations are not allowed.",
+            code="duplicate_interpretation",
+        )
     return tuple(parsed)
 
 
 def _parse_hypotheses(value: object, facts: ReportFacts) -> tuple[ReportHypothesis, ...]:
     if not isinstance(value, list) or len(value) > MAX_HYPOTHESES:
-        raise ReportContractError("Invalid hypotheses collection.")
+        raise ReportContractError(
+            "Invalid hypotheses collection.", code="invalid_hypotheses"
+        )
     parsed = []
     eligible = eligible_hypothesis_ids(facts)
     for item in value:
         expected = {"hypothesis_id", "fact_refs", "validation_needed_id"}
         if not isinstance(item, dict) or set(item) != expected:
-            raise ReportContractError("Invalid hypothesis fields.")
+            raise ReportContractError(
+                "Invalid hypothesis fields.", code="invalid_hypothesis_fields"
+            )
         hypothesis_id = item["hypothesis_id"]
         validation_id = item["validation_needed_id"]
         if not isinstance(hypothesis_id, str) or hypothesis_id not in eligible:
-            raise ReportContractError("Unknown or ineligible hypothesis.")
+            raise ReportContractError(
+                "Unknown or ineligible hypothesis.", code="ineligible_hypothesis"
+            )
         if not isinstance(validation_id, str):
-            raise ReportContractError("Invalid hypothesis validation identifier.")
+            raise ReportContractError(
+                "Invalid hypothesis validation identifier.",
+                code="invalid_validation_needed_id",
+            )
         refs = _parse_fact_refs(item["fact_refs"], facts)
         catalog = HYPOTHESIS_CATALOG[hypothesis_id]
         if not refs or not set(refs).issubset(set(catalog.fact_refs)):
-            raise ReportContractError("Hypothesis references do not match its catalog entry.")
+            raise ReportContractError(
+                "Hypothesis references do not match its catalog entry.",
+                code="invalid_hypothesis_fact_refs",
+            )
         if validation_id not in catalog.validation_needed_ids:
-            raise ReportContractError("Hypothesis validation is not eligible for its catalog entry.")
+            raise ReportContractError(
+                "Hypothesis validation is not eligible for its catalog entry.",
+                code="ineligible_hypothesis_validation",
+            )
         parsed.append(ReportHypothesis(hypothesis_id, refs, validation_id))
+    if len({item.hypothesis_id for item in parsed}) != len(parsed):
+        raise ReportContractError(
+            "Duplicate hypotheses are not allowed.", code="duplicate_hypothesis"
+        )
     return tuple(parsed)
 
 
 def _parse_fact_refs(value: object, facts: ReportFacts) -> tuple[str, ...]:
-    if not isinstance(value, list) or len(value) > 4 or not all(isinstance(item, str) for item in value):
-        raise ReportContractError("Invalid fact references.")
+    if (
+        not isinstance(value, list)
+        or len(value) > MAX_FACT_REFS
+        or not all(isinstance(item, str) for item in value)
+    ):
+        raise ReportContractError("Invalid fact references.", code="invalid_fact_refs")
     refs = tuple(dict.fromkeys(value))
+    if len(refs) != len(value):
+        raise ReportContractError(
+            "Duplicate fact references are not allowed.", code="duplicate_fact_ref"
+        )
     if any(ref not in facts.facts for ref in refs):
-        raise ReportContractError("A referenced fact does not exist.")
+        raise ReportContractError(
+            "A referenced fact does not exist.", code="unknown_fact_ref"
+        )
     return refs
 
 
@@ -472,8 +565,20 @@ def _parse_id_list(
     value: object, field: str, allowed: set[str], maximum: int
 ) -> tuple[str, ...]:
     if not isinstance(value, list) or len(value) > maximum or not all(isinstance(item, str) for item in value):
-        raise ReportContractError(f"Invalid {field} collection.")
+        raise ReportContractError(
+            f"Invalid {field} collection.", code=f"invalid_{field}"
+        )
     result = tuple(dict.fromkeys(value))
+    if len(result) != len(value):
+        singular = field.removesuffix("_ids")
+        raise ReportContractError(
+            f"Duplicate values are not allowed in {field}.",
+            code=f"duplicate_{singular}",
+        )
     if any(item not in allowed for item in result):
-        raise ReportContractError(f"Unknown or ineligible value in {field}.")
+        singular = field.removesuffix("_ids")
+        raise ReportContractError(
+            f"Unknown or ineligible value in {field}.",
+            code=f"ineligible_{singular}",
+        )
     return result
