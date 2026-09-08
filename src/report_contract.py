@@ -89,7 +89,7 @@ class HypothesisCatalogEntry:
 
 INTERPRETATION_CATALOG = {
     "review_negative_distribution": CatalogEntry(
-        "La distribución observada justifica revisar una muestra de los comentarios clasificados como negativos.",
+        "La distribución observada permite identificar el volumen clasificado como negativo; su evaluación requiere contraste humano.",
         ("sentiment.negative.count", "sentiment.negative.share"),
     ),
     "lexical_concentration_for_review": CatalogEntry(
@@ -226,7 +226,6 @@ def build_report_facts(metrics: dict[str, object], pareto: pd.DataFrame) -> Repo
             "Negative predictions at or above the batch upper-quartile local-confidence "
             "threshold; a technical signal, not validated business severity."
         ),
-        denominator_fact="dataset.total_comments",
     )
 
     selected_frequency_sum = int(pareto["frequency"].sum()) if not pareto.empty else 0
@@ -236,10 +235,18 @@ def build_report_facts(metrics: dict[str, object], pareto: pd.DataFrame) -> Repo
         unit="selected_ngram_document_mentions",
         population="selected n-grams from comments classified as negative",
         definition=(
-            "Sum of document frequencies for the selected n-grams (up to 15 by default, "
-            "after redundant-unigram suppression); not unique comments and not every "
-            "initially extracted mention."
+            "Sum of document frequencies for the selected n-grams supplied by the Pareto "
+            "pipeline (up to 15 by default, after redundant-unigram suppression); not "
+            "unique comments and not every initially extracted mention."
         ),
+    )
+    within = pareto[pareto.get("within_80_percent", False)] if not pareto.empty else pareto
+    facts["lexical.pareto_block_term_count"] = ReportFact(
+        fact_id="lexical.pareto_block_term_count",
+        value=len(within),
+        unit="selected_ngrams",
+        population="selected n-grams from comments classified as negative",
+        definition="Number of ranked selected n-grams in the existing Pareto 80 percent block.",
     )
     for rank, (_, row) in enumerate(pareto.head(15).iterrows(), start=1):
         frequency_id = f"lexical.rank.{rank}.frequency"
@@ -422,6 +429,8 @@ def _parse_interpretations(value: object, facts: ReportFacts) -> tuple[Interpret
         if not refs or not set(refs).issubset(allowed_refs):
             raise ReportContractError("Interpretation references do not match its catalog entry.")
         parsed.append(InterpretationSelection(interpretation_id, refs))
+    if len({item.interpretation_id for item in parsed}) != len(parsed):
+        raise ReportContractError("Duplicate interpretations are not allowed.")
     return tuple(parsed)
 
 

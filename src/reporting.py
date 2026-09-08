@@ -36,11 +36,11 @@ Reglas:
 Ejemplo de forma, no de contenido:
 {{
   "schema_version": "2.0",
-  "interpretations": [{{"interpretation_id": "identificador_elegible", "fact_refs": ["hecho.existente"]}}],
+  "interpretations": [],
   "hypotheses": [],
-  "recommendation_ids": ["identificador_elegible"],
-  "evidence_needed_ids": ["identificador_elegible"],
-  "insufficient_evidence_ids": ["identificador_elegible"]
+  "recommendation_ids": [],
+  "evidence_needed_ids": [],
+  "insufficient_evidence_ids": []
 }}
 
 CONTEXTO:
@@ -55,10 +55,12 @@ def generate_deterministic_report(
     facts = build_report_facts(metrics, pareto)
     total = int(fact_value(facts, "dataset.total_comments"))
     principal = pareto.head(3)
-    within = pareto[pareto.get("within_80_percent", False)] if not pareto.empty else pareto
 
     term_lines = (
-        [f"{index + 1}. **{row.topic}** — {int(row.frequency)} menciones." for index, row in principal.iterrows()]
+        [
+            f"{rank}. **{row.topic}** — {int(fact_value(facts, f'lexical.rank.{rank}.frequency'))} menciones."
+            for rank, (_, row) in enumerate(principal.iterrows(), start=1)
+        ]
         if not principal.empty
         else ["No hay suficientes comentarios negativos para extraer términos frecuentes."]
     )
@@ -78,8 +80,8 @@ def generate_deterministic_report(
         else f"{float(ratio):.2f} positivos por cada negativo"
     )
     pareto_text = (
-        f"{len(within)} términos forman el bloque que alcanza aproximadamente el 80% acumulado de las menciones de n-gramas."
-        if not within.empty
+        f"{int(fact_value(facts, 'lexical.pareto_block_term_count'))} términos forman el bloque que alcanza aproximadamente el 80% acumulado de las menciones de n-gramas."
+        if int(fact_value(facts, "lexical.pareto_block_term_count")) > 0
         else "No se pudo calcular un Pareto por falta de temas negativos."
     )
     return "\n".join(

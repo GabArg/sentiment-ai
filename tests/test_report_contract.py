@@ -27,6 +27,7 @@ def test_lexical_denominator_is_selected_document_frequency_sum():
     assert "not unique comments" in denominator.definition
     assert "up to 15" in denominator.definition
     assert facts.facts["lexical.rank.1.share"].denominator_fact == denominator.fact_id
+    assert fact_value(facts, "lexical.pareto_block_term_count") == 2
 
 
 def test_overlapping_ngram_frequencies_are_never_typed_as_unique_comments():
@@ -72,5 +73,6 @@ def test_technical_signal_is_not_business_severity():
 
     assert signal.value == 2
     assert signal.unit == "comments"
+    assert signal.denominator_fact is None
     assert "technical signal" in signal.definition
     assert "not validated business severity" in signal.definition

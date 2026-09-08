@@ -521,6 +521,8 @@ def test_new_batch_source_hides_old_results_until_processed(monkeypatch):
     app.radio[0].set_value(app.radio[0].options[1]).run()
     app.button[0].click().run()
     previous_source = app.session_state["batch_source_id"]
+    app.session_state["ai_report"] = "legacy"
+    app.session_state["assisted_report_v2"] = {"version": "2.0", "reading": "stale"}
     assert analysis_calls == 1
 
     current["upload"] = _UploadedCsv("comentario,canal\nlote nuevo,tienda\n".encode(), "nuevo.csv")
@@ -532,6 +534,8 @@ def test_new_batch_source_hides_old_results_until_processed(monkeypatch):
 
     app.button[0].click().run()
     assert analysis_calls == 2
+    assert "ai_report" not in app.session_state
+    assert "assisted_report_v2" not in app.session_state
     assert app.session_state["batch_source_id"] != previous_source
     assert app.session_state["batch_results"]["text"].tolist() == ["lote nuevo"]
     assert len(app.get("download_button")) == 1

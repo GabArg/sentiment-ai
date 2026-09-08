@@ -57,6 +57,25 @@ def test_valid_structured_reading_is_parsed_without_provider_numbers():
     assert reading.recommendation_ids == ("inspect_ranked_ngrams",)
 
 
+def test_multiple_distinct_interpretations_are_valid():
+    response = valid_response()
+    response["interpretations"].append(
+        {
+            "interpretation_id": "confidence_requires_independent_evaluation",
+            "fact_refs": ["model.mean_local_confidence"],
+        }
+    )
+    reading = parse_assisted_reading(json.dumps(response), facts())
+    assert len(reading.interpretations) == 2
+
+
+def test_duplicate_interpretations_are_rejected():
+    response = valid_response()
+    response["interpretations"].append(dict(response["interpretations"][0]))
+    with pytest.raises(ReportContractError, match="Duplicate"):
+        parse_assisted_reading(json.dumps(response), facts())
+
+
 @pytest.mark.parametrize("extra", [{"metric": 41}, {"deadline": "soon"}, {"category": "delivery"}])
 def test_additional_fields_are_rejected(extra):
     response = valid_response() | extra
