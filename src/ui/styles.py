@@ -681,6 +681,42 @@ def load_global_styles() -> None:
             .report-ai-meta > b { justify-self:start; }
         }
 
+        /* Batch workflow additions */
+        .batch-stepper {
+            display:flex; align-items:center; padding:.75rem 1rem; margin:.65rem 0 .9rem;
+            border:1px solid var(--line); border-radius:11px; background:var(--surface);
+        }
+        .batch-stepper > i { flex:1; height:1px; margin:0 .9rem; background:var(--line); }
+        .batch-step { display:flex; align-items:center; gap:.55rem; opacity:.45; }
+        .batch-step.active { opacity:1; }
+        .batch-step > b {
+            display:grid; place-items:center; width:1.55rem; height:1.55rem; border-radius:50%;
+            background:#EDF1F1; color:var(--muted); font-size:.58rem;
+        }
+        .batch-step.active > b { background:var(--navy); color:#FFF; }
+        .batch-step span strong,.batch-step span small { display:block; white-space:nowrap; }
+        .batch-step span strong { color:var(--ink); font-size:.64rem; }
+        .batch-step span small { color:var(--muted); font-size:.53rem; margin-top:.1rem; }
+        .batch-file-summary {
+            display:flex; align-items:center; gap:.75rem; padding:.75rem .9rem; margin:.85rem 0;
+            border:1px solid var(--line); border-radius:11px; background:var(--surface);
+        }
+        .batch-file-summary > div {
+            display:grid; place-items:center; width:2.3rem; height:2.3rem; border-radius:8px;
+            background:var(--accent-soft); color:var(--positive); font-size:.57rem; font-weight:800;
+        }
+        .batch-file-summary > span { flex:1; }
+        .batch-file-summary span strong,.batch-file-summary span small { display:block; }
+        .batch-file-summary span strong { color:var(--ink); font-size:.7rem; }
+        .batch-file-summary span small { color:var(--muted); font-size:.56rem; margin-top:.15rem; }
+        .batch-file-summary > b { color:var(--positive); font-size:.6rem; }
+        @media (max-width: 650px) {
+            .batch-stepper > i { margin:0 .35rem; }
+            .batch-step span small { display:none; }
+            .batch-file-summary { align-items:flex-start; flex-wrap:wrap; }
+            .batch-file-summary > b { width:100%; margin-left:3.05rem; }
+        }
+
         /* Individual analysis workspace */
         .individual-intro {
             height:100%; min-height:13.4rem; padding:1.15rem 1.2rem;

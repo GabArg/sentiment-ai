@@ -6,6 +6,13 @@ from .charts import (
     render_pareto_priority_chart,
     render_sentiment_distribution_chart,
 )
+from .batch_view import (
+    prepare_batch_display,
+    preview_column_config,
+    render_batch_file_summary,
+    render_batch_stepper,
+    selectable_text_columns,
+)
 from .dashboard import (
     build_dashboard_view_model,
     build_traceability_text,
@@ -58,11 +65,15 @@ __all__ = [
     "build_traceability_text",
     "build_pareto_view_model",
     "parse_report_sections",
+    "prepare_batch_display",
+    "preview_column_config",
     "render_batch_csv_preview",
+    "render_batch_file_summary",
     "render_batch_kpi_cards",
     "render_batch_results_header",
     "render_batch_summary_band",
     "render_batch_upload_empty",
+    "render_batch_stepper",
     "render_attention_panel",
     "render_ai_report_intro",
     "render_confidence_context_chart",
@@ -88,4 +99,5 @@ __all__ = [
     "render_sidebar_footer",
     "render_sidebar_signature",
     "render_workspace_empty_state",
+    "selectable_text_columns",
 ]

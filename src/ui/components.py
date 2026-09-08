@@ -85,9 +85,8 @@ def render_result_card(
 
 
 def render_batch_upload_empty(privacy_message: str) -> None:
-    """Render the empty-state upload section with a privacy callout."""
-    safe_message = html.escape(privacy_message)
-    st.markdown(
+    """Render the upload prompt; the caller keeps privacy in a native alert."""
+    render_html(
         """
         <div class="batch-upload-card">
             <div class="batch-upload-title">Analizá feedback en lote</div>
@@ -96,17 +95,7 @@ def render_batch_upload_empty(privacy_message: str) -> None:
                 de sentimiento para cada uno.
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f"""
-        <div class="batch-privacy-callout">
-            <span class="privacy-icon">🔒</span>
-            <span>{safe_message}</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -115,15 +104,14 @@ def render_batch_csv_preview(
 ) -> None:
     """Render CSV summary chips above the data preview."""
     safe_column = html.escape(selected_column)
-    st.markdown(
+    render_html(
         f"""
         <div class="batch-csv-summary">
             <span class="batch-csv-chip">Filas detectadas: <strong>{row_count:,}</strong></span>
             <span class="batch-csv-chip">Columnas: <strong>{col_count:,}</strong></span>
             <span class="batch-csv-chip">Columna de comentario: <strong>{safe_column}</strong></span>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -136,10 +124,7 @@ def render_batch_summary_band(
         parts.append(f'<span class="band-item">Omitidos: <strong>{dropped:,}</strong></span>')
     parts.append('<span class="band-item">Estado: <strong>Completado</strong></span>')
     separator = ' <span class="band-separator">|</span> '
-    st.markdown(
-        f'<div class="batch-summary-band">{separator.join(parts)}</div>',
-        unsafe_allow_html=True,
-    )
+    render_html(f'<div class="batch-summary-band">{separator.join(parts)}</div>')
 
 
 def render_batch_kpi_cards(metrics: dict[str, object]) -> None:
@@ -163,20 +148,16 @@ def render_batch_kpi_cards(metrics: dict[str, object]) -> None:
             f'{sub_html}'
             f'</div>'
         )
-    st.markdown(
-        f'<div class="batch-kpi-row">{"".join(html_cards)}</div>',
-        unsafe_allow_html=True,
-    )
+    render_html(f'<div class="batch-kpi-row">{"".join(html_cards)}</div>')
 
 
 def render_batch_results_header() -> None:
     """Render the results section header."""
-    st.markdown(
+    render_html(
         """
         <div class="batch-section-header">
             <h3>Resultados del análisis</h3>
             <p>Clasificación de sentimiento por comentario. Podés descargar el CSV completo debajo.</p>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )

@@ -47,11 +47,14 @@ from src.ui import (
     build_traceability_text,
     format_navigation_label,
     load_global_styles,
-    render_batch_csv_preview,
+    prepare_batch_display,
+    preview_column_config,
+    render_batch_file_summary,
     render_batch_kpi_cards,
     render_batch_results_header,
     render_batch_summary_band,
     render_batch_upload_empty,
+    render_batch_stepper,
     render_attention_panel,
     render_ai_report_intro,
     render_confidence_context_chart,
@@ -75,6 +78,7 @@ from src.ui import (
     render_sidebar_brand,
     render_sidebar_signature,
     render_workspace_empty_state,
+    selectable_text_columns,
 )
 
 
@@ -207,6 +211,7 @@ def render_individual() -> None:
 def render_batch() -> None:
     st.markdown("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
+    render_batch_stepper(has_file=uploaded is not None, has_results=get_batch_results() is not None)
     if uploaded is None:
         render_batch_upload_empty(
             "El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras."
@@ -218,9 +223,18 @@ def render_batch() -> None:
     except CSVValidationError as exc:
         st.error(str(exc))
         return
-    column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
-    render_batch_csv_preview(len(frame), len(frame.columns), column)
-    st.dataframe(frame.head(20), width="stretch", hide_index=True)
+    render_batch_file_summary(frame, getattr(uploaded, "name", None))
+    text_columns = selectable_text_columns(frame)
+    if not text_columns:
+        st.error("El CSV no contiene una columna disponible para analizar comentarios.")
+        return
+    column = st.selectbox("Columna que contiene el comentario", options=text_columns)
+    st.dataframe(
+        frame.head(20),
+        width="stretch",
+        hide_index=True,
+        column_config=preview_column_config(frame),
+    )
     if st.button("Procesar comentarios", type="primary", width="stretch"):
         try:
             with st.spinner("Vectorizando y clasificando el lote…"):
@@ -234,22 +248,25 @@ def render_batch() -> None:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
     if results is not None:
-        render_batch_results_header()
         metrics = calculate_metrics(results)
+        display, column_config = prepare_batch_display(results)
+        heading, action = st.columns([4, 1], gap="medium", vertical_alignment="bottom")
+        with heading:
+            render_batch_results_header()
+        with action:
+            st.download_button(
+                "Descargar CSV procesado",
+                data=results.to_csv(index=False).encode("utf-8-sig"),
+                file_name="sentiment_analysis_results.csv",
+                mime="text/csv",
+                width="stretch",
+            )
         render_batch_kpi_cards(metrics)
-        display = results.copy()
-        percentage_columns = [column for column in display if column.startswith("probability_")]
-        display["confidence"] = display["confidence"].map(lambda value: f"{value:.1%}")
-        for probability_column in percentage_columns:
-            display[probability_column] = display[probability_column].map(lambda value: f"{value:.1%}")
-        st.dataframe(display.head(100), width="stretch", hide_index=True)
-        csv_data = results.to_csv(index=False).encode("utf-8-sig")
-        st.download_button(
-            "Descargar CSV procesado",
-            data=csv_data,
-            file_name="sentiment_analysis_results.csv",
-            mime="text/csv",
+        st.dataframe(
+            display.head(100),
             width="stretch",
+            hide_index=True,
+            column_config=column_config,
         )
 
 
@@ -427,6 +444,7 @@ def render_batch_controlled() -> None:
     else:
         st.markdown("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
+    render_batch_stepper(has_file=uploaded is not None, has_results=get_batch_results() is not None)
     if uploaded is None:
         if direct_config.enabled:
             privacy_msg = "Sólo se envía el comentario anonimizado para las revisiones directas; no se envían otras columnas del CSV."
@@ -442,9 +460,18 @@ def render_batch_controlled() -> None:
     except CSVValidationError as exc:
         st.error(str(exc))
         return
-    column = st.selectbox("Columna que contiene el comentario", options=list(frame.columns))
-    render_batch_csv_preview(len(frame), len(frame.columns), column)
-    st.dataframe(frame.head(20), width="stretch", hide_index=True)
+    render_batch_file_summary(frame, getattr(uploaded, "name", None))
+    text_columns = selectable_text_columns(frame)
+    if not text_columns:
+        st.error("El CSV no contiene una columna disponible para analizar comentarios.")
+        return
+    column = st.selectbox("Columna que contiene el comentario", options=text_columns)
+    st.dataframe(
+        frame.head(20),
+        width="stretch",
+        hide_index=True,
+        column_config=preview_column_config(frame),
+    )
     try:
         if direct_config.enabled:
             st.info(f"Límite total compartido de llamadas externas: {multilingual.max_external_calls_per_batch:,}. Las rutas directas consumen una llamada.")
@@ -540,39 +567,36 @@ def render_batch_controlled() -> None:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
     if results is not None:
-        render_batch_results_header()
         metrics = calculate_metrics(results)
-        render_batch_kpi_cards(metrics)
-        display = results.copy()
-        if "review_state" in display:
-            display["review_state"] = display["review_state"].map(REVIEW_STATE_LABELS).fillna("Estado desconocido")
-        if "translation_state" in display:
-            display["translation_state"] = display["translation_state"].map(TRANSLATION_STATE_LABELS).fillna("Estado desconocido")
-        if "direct_review_state" in display:
-            display["direct_review_state"] = display["direct_review_state"].map(DIRECT_REVIEW_STATE_LABELS).fillna("Estado desconocido")
-        if "translation_error_code" in display:
-            display["translation_error_code"] = display["translation_error_code"].map(
-                lambda value: EXTERNAL_ERROR_LABELS.get(value, value)
+        display, column_config = prepare_batch_display(
+            results,
+            review_labels=REVIEW_STATE_LABELS,
+            translation_labels=TRANSLATION_STATE_LABELS,
+            direct_labels=DIRECT_REVIEW_STATE_LABELS,
+            error_labels=EXTERNAL_ERROR_LABELS,
+        )
+        heading, action = st.columns([4, 1], gap="medium", vertical_alignment="bottom")
+        with heading:
+            render_batch_results_header()
+        with action:
+            st.download_button(
+                "Descargar CSV procesado",
+                data=results.to_csv(index=False).encode("utf-8-sig"),
+                file_name="sentiment_analysis_results.csv",
+                mime="text/csv",
+                width="stretch",
             )
-        percentage_columns = [name for name in display if name.startswith("probability_")]
-        for name in ["confidence", "local_confidence"]:
-            if name in display:
-                display[name] = display[name].map(lambda value: f"{value:.1%}")
-        for name in percentage_columns:
-            display[name] = display[name].map(lambda value: f"{value:.1%}")
-        display = display.rename(columns={"review_state": "Estado de revisión", "translation_state": "Estado de traducción", "direct_review_state": "Estado de revisión directa"})
-        st.dataframe(display.head(100), width="stretch", hide_index=True)
+        render_batch_kpi_cards(metrics)
+        st.dataframe(
+            display.head(100),
+            width="stretch",
+            hide_index=True,
+            column_config=column_config,
+        )
         summary = st.session_state.get("batch_summary")
         summary_kind = st.session_state.get("batch_summary_kind")
         if isinstance(summary, dict) and isinstance(summary_kind, str):
             render_batch_traceability(results, summary, summary_kind)
-        st.download_button(
-            "Descargar CSV procesado",
-            data=results.to_csv(index=False).encode("utf-8-sig"),
-            file_name="sentiment_analysis_results.csv",
-            mime="text/csv",
-            width="stretch",
-        )
 
 
 def render_batch_traceability(results: pd.DataFrame, summary: dict, kind: str) -> None:
