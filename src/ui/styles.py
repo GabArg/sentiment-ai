@@ -764,42 +764,43 @@ def load_global_styles() -> None:
         }
         .about-eyebrow { color:var(--positive); font-size:.55rem; font-weight:800; letter-spacing:.12em; }
         .about-hero h2 { max-width:44rem; margin:.42rem 0 .5rem; color:var(--ink); font-size:1.45rem; line-height:1.12; }
-        .about-hero p,.about-grid p,.about-history p,.about-team p { margin:0; color:var(--muted); font-size:.66rem; line-height:1.65; }
+        .about-hero p,.about-grid p,.about-history p,.about-team p { margin:0; color:var(--muted); font-size:.875rem; line-height:1.65; }
         .about-hero aside { align-self:stretch; padding:1rem; border-radius:11px; background:var(--navy); color:#FFF; }
         .about-hero aside strong,.about-hero aside span { display:block; }
         .about-hero aside strong { margin-bottom:.45rem; font-size:.72rem; }
-        .about-hero aside span { color:#C7D3D9; font-size:.61rem; line-height:1.55; }
+        .about-hero aside span { color:#D7E0E4; font-size:.8rem; line-height:1.6; }
         .about-section { padding:1.15rem 1.25rem; margin-bottom:1rem; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
         .about-section h3,.about-grid h3,.about-privacy h3 { margin:.3rem 0 .7rem; color:var(--ink); font-size:.85rem; }
         .about-pipeline { display:flex; align-items:center; gap:.7rem; }
         .about-pipeline article { flex:1; min-height:5.2rem; padding:.8rem; border-radius:10px; background:#F4F7F6; }
         .about-pipeline article b,.about-pipeline article strong,.about-pipeline article span { display:block; }
         .about-pipeline article b { color:var(--positive); font-size:.55rem; }
-        .about-pipeline article strong { margin:.25rem 0; color:var(--ink); font-size:.65rem; }
-        .about-pipeline article span { color:var(--muted); font-size:.56rem; line-height:1.4; }
+        .about-pipeline article strong { margin:.25rem 0; color:var(--ink); font-size:.78rem; }
+        .about-pipeline article span { color:var(--muted); font-size:.78rem; line-height:1.5; }
         .about-pipeline > i { color:#A4B2B7; font-style:normal; }
         .about-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
         .about-grid article { padding:1.15rem 1.2rem; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
         .about-card-icon { display:inline-block; padding:.27rem .42rem; border-radius:5px; background:var(--accent-soft); color:var(--positive); font-size:.5rem; font-weight:800; }
         .about-card-icon.external { background:#EEF0F8; color:#4A5E86; }
         .about-privacy { display:grid; grid-template-columns:8rem 1fr; gap:1rem; padding:1.2rem; margin-bottom:1rem; border-radius:14px; background:var(--navy); color:#FFF; }
-        .about-privacy > div { color:#82D2B0; font-size:.55rem; font-weight:800; letter-spacing:.12em; }
+        .about-privacy > div { color:#91DBBE; font-size:.68rem; font-weight:800; letter-spacing:.12em; }
         .about-privacy h3 { margin-top:0; color:#FFF; }
-        .about-privacy p { margin:0; color:#CFD9DE; font-size:.63rem; line-height:1.65; }
+        .about-privacy p { margin:0 0 .65rem; color:#E0E7EA; font-size:.875rem; line-height:1.65; }
+        .about-privacy p:last-child { margin-bottom:0; }
         .about-method article { background:#FAFBFB; }
         .about-team { padding:1.2rem 1.25rem; margin-bottom:1rem; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
         .about-team h3 { margin:.3rem 0 .4rem; color:var(--ink); font-size:.9rem; }
         .about-team-members { display:flex; flex-wrap:wrap; gap:.45rem; margin:.85rem 0; }
-        .about-team-members span { padding:.38rem .55rem; border:1px solid var(--line); border-radius:7px; background:#F7F9F8; color:var(--ink); font-size:.59rem; font-weight:650; }
+        .about-team-members span { padding:.45rem .62rem; border:1px solid var(--line); border-radius:7px; background:#F7F9F8; color:var(--ink); font-size:.82rem; font-weight:650; }
         .about-team .about-team-note { padding:.7rem .8rem; border-left:2px solid var(--positive); background:var(--accent-soft); }
         .about-stages { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; margin-top:.85rem; }
         .about-stages article { padding:.72rem; border-radius:9px; background:#F4F7F6; }
         .about-stages b,.about-stages span { display:block; }
-        .about-stages b { color:var(--ink); font-size:.61rem; }
-        .about-stages span { margin-top:.2rem; color:var(--muted); font-size:.55rem; line-height:1.45; }
+        .about-stages b { color:var(--ink); font-size:.78rem; }
+        .about-stages span { margin-top:.25rem; color:var(--muted); font-size:.78rem; line-height:1.55; }
         .about-history { padding:.9rem 1rem; border-left:3px solid var(--positive); background:#F3F7F5; }
-        .about-history strong { color:var(--ink); font-size:.64rem; }
-        .about-history p { margin-top:.25rem; }
+        .about-history strong { color:var(--ink); font-size:.78rem; }
+        .about-history p { margin-top:.25rem; font-size:.8rem; line-height:1.6; }
         @media (max-width: 760px) {
             .about-hero,.about-grid { grid-template-columns:1fr; }
             .about-pipeline { align-items:stretch; flex-direction:column; }

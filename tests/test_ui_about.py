@@ -47,6 +47,8 @@ def test_about_renders_clear_product_scope_before_technical_detail(monkeypatch):
     assert "Qué permite revisar" in body
     assert "Qué no determina" in body
     assert "Privacidad y tratamiento de datos" in body
+    privacy_block = body.split('<section class="about-privacy">', 1)[1].split("</section>", 1)[0]
+    assert privacy_block.count("<p>") == 3
     assert "Pareto ordena n-gramas frecuentes" in body
     assert "neutrales factuales" in body
     assert "ATTRIBUTION.md" in body

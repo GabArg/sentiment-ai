@@ -31,23 +31,31 @@ def build_privacy_copy(*, direct: bool, multilingual: bool, hybrid: bool) -> str
             "Si se habilita, sólo los casos previstos por la ruta configurada pueden enviarse."
         )
     external_review = " ".join(external_routes)
-    return (
+    local = (
         "El análisis local clasifica comentarios y calcula métricas sin enviarlos a un proveedor "
-        "externo. "
+        "externo."
+    )
+    review = (
         f"{external_review} Antes de enviar texto para traducción o revisión, la aplicación "
         "aplica anonimización; la ruta envía el comentario anonimizado y excluye las demás "
-        "columnas del CSV. El informe agregado es una "
-        "acción opcional y separada: su contrato envía conteos, porcentajes y métricas resumidas, "
-        "no comentarios individuales ni el archivo CSV. La anonimización reduce la exposición, "
-        "pero nombres propios o contexto libre pueden permanecer y no existe una garantía de "
-        "desidentificación completa."
+        "columnas del CSV."
     )
+    aggregate_report = (
+        "El informe agregado es una acción opcional y separada: su contrato envía conteos, "
+        "porcentajes y métricas resumidas, no comentarios individuales ni el archivo CSV. La "
+        "anonimización reduce la exposición, pero nombres propios o contexto libre pueden "
+        "permanecer y no existe una garantía de desidentificación completa."
+    )
+    return "\n\n".join((local, review, aggregate_report))
 
 
 def render_about_overview(*, direct: bool, multilingual: bool, hybrid: bool) -> None:
     """Render the product story without changing operational configuration."""
-    privacy = html.escape(
-        build_privacy_copy(direct=direct, multilingual=multilingual, hybrid=hybrid)
+    privacy = "".join(
+        f"<p>{html.escape(paragraph)}</p>"
+        for paragraph in build_privacy_copy(
+            direct=direct, multilingual=multilingual, hybrid=hybrid
+        ).split("\n\n")
     )
     render_html(
         f"""
@@ -77,7 +85,7 @@ def render_about_overview(*, direct: bool, multilingual: bool, hybrid: bool) -> 
             El resultado del modelo requiere criterio humano, especialmente fuera de dominio.</p></article>
         </section>
         <section class="about-privacy"><div>DATOS</div><article><h3>Privacidad y tratamiento de datos</h3>
-            <p>{privacy}</p></article></section>
+            {privacy}</article></section>
         <section class="about-grid about-method">
             <article><span class="about-eyebrow">CÓMO SE PROCESA</span><h3>Modelo local y rutas opcionales</h3>
             <p>La base es un modelo ternario TF-IDF con regresión logística. Según la configuración,
