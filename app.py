@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
@@ -45,6 +44,8 @@ from src.rate_pacer import RatePacer
 from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
 from src.ui import (
+    build_dashboard_view_model,
+    build_traceability_text,
     format_navigation_label,
     load_global_styles,
     render_batch_csv_preview,
@@ -52,12 +53,19 @@ from src.ui import (
     render_batch_results_header,
     render_batch_summary_band,
     render_batch_upload_empty,
+    render_attention_panel,
+    render_confidence_context_chart,
+    render_dashboard_kpis,
+    render_dataset_reading,
+    render_panel_heading,
     render_probability_chart,
+    render_sentiment_distribution_chart,
     render_dataset_context,
     render_page_header,
     render_result_card,
     render_sidebar_brand,
     render_sidebar_signature,
+    render_workspace_empty_state,
 )
 from src.ui.charts import SENTIMENT_COLORS, apply_plotly_theme
 
@@ -564,71 +572,37 @@ def render_batch_traceability(results: pd.DataFrame, summary: dict, kind: str) -
 
 def render_dashboard() -> None:
     try:
-        results, metrics, _ = get_analysis()
+        results, metrics, pareto = get_analysis()
     except ValueError as exc:
-        st.info(str(exc))
+        render_workspace_empty_state(str(exc))
         return
-    render_metric_cards(metrics)
-    if "review_state" in results.columns:
-        states = results["review_state"].value_counts(normalize=True).mul(100)
-        dashboard_labels = {
-            "local_only": "Modelo local",
-            "reviewed": "Confirmados por second check",
-            "disagreement": "Corregidos por second check",
-            "fallback_local": "Fallback local",
-        }
-        st.caption(
-            "Trazabilidad híbrida: "
-            + " · ".join(
-                f"{dashboard_labels.get(state, 'Estado desconocido')} {value:.1f}%"
-                for state, value in states.items()
-            )
-        )
+    view = build_dashboard_view_model(metrics, pareto)
+    render_dashboard_kpis(view)
     distribution = sentiment_distribution(metrics)
-    left, right = st.columns(2)
+    left, right = st.columns([1.35, 0.85], gap="medium")
     with left:
-        figure = px.bar(
-            distribution,
-            x="sentiment",
-            y="count",
-            color="sentiment",
-            color_discrete_map=SENTIMENT_COLORS,
-            text="count",
-            labels={"sentiment": "Sentimiento", "count": "Comentarios"},
-            title="Distribución de sentimientos",
-        )
-        apply_plotly_theme(figure, height=None, top_margin=50, right_margin=0)
-        st.plotly_chart(figure, use_container_width=True)
+        with st.container(border=True):
+            render_panel_heading(
+                "Panorama general",
+                "Distribución de sentimientos",
+                "Composición del lote según la clasificación final.",
+            )
+            render_sentiment_distribution_chart(distribution, int(metrics["total"]))
     with right:
-        confidence = results.groupby("sentiment", as_index=False)["confidence"].mean()
-        figure = px.bar(
-            confidence,
-            x="sentiment",
-            y="confidence",
-            color="sentiment",
-            color_discrete_map=SENTIMENT_COLORS,
-            text=confidence["confidence"].map(lambda value: f"{value:.1%}"),
-            labels={"sentiment": "Sentimiento", "confidence": "Confianza media"},
-            title="Confianza media por clase",
-        )
-        figure.update_yaxes(tickformat=".0%", range=[0, 1])
-        apply_plotly_theme(figure, height=None, top_margin=50, right_margin=0)
-        st.plotly_chart(figure, use_container_width=True)
+        render_attention_panel(view)
 
-    st.subheader("Visión de negocio")
-    negative_pct = metrics["percentages"]["Negativo"]
-    positive_pct = metrics["percentages"]["Positivo"]
-    ratio = metrics["positive_negative_ratio"]
-    business_cols = st.columns(3)
-    business_cols[0].metric("Feedback negativo", f"{negative_pct:.1f}%")
-    business_cols[1].metric("Señal positiva", f"{positive_pct:.1f}%")
-    business_cols[2].metric(
-        "Ratio positivo/negativo",
-        "Sin negativos" if ratio == float("inf") else f"{ratio:.2f}",
-    )
-    st.write(
-        f"Se detectaron **{metrics['critical_negative_count']:,} comentarios negativos críticos**, definidos de forma transparente como negativos cuya confianza está en el cuartil superior del lote (≥ {metrics['critical_confidence_threshold']:.1%})."
-    )
+    technical, reading = st.columns([1.35, 0.85], gap="medium")
+    with technical:
+        with st.container(border=True):
+            render_panel_heading(
+                "Contexto técnico",
+                "Confianza local por clase",
+                "Promedio de la probabilidad asignada por el modelo local.",
+            )
+            render_confidence_context_chart(results)
+            st.caption("La confianza es una estimación interna del modelo local, no una garantía de corrección.")
+    with reading:
+        render_dataset_reading(view, build_traceability_text(results))
 
 
 def render_pareto() -> None:

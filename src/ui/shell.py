@@ -20,7 +20,7 @@ PAGE_META = {
     ),
     "Dashboard": (
         "Customer feedback overview",
-        "Dashboard",
+        "La voz de tus clientes, en foco.",
         "Detectá señales relevantes, entendé el contexto y priorizá dónde actuar.",
     ),
     "Pareto 80/20": (
