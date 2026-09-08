@@ -33,3 +33,25 @@ def test_about_renders_as_one_controlled_normalized_fragment(monkeypatch):
     assert "about-pipeline" in body
     assert "proyecto original fue un desarrollo grupal" in body.casefold()
     assert "ATTRIBUTION.md" in body
+
+
+def test_about_shows_confirmed_original_team_and_separates_project_stages(monkeypatch):
+    rendered = []
+    monkeypatch.setattr(st, "markdown", lambda body, **kwargs: rendered.append(body))
+
+    render_about_overview(direct=False, multilingual=False, hybrid=False)
+
+    body = rendered[0]
+    assert "H12-25-L-Equipo-72" in body
+    for confirmed_name_fragment in (
+        "Carlos Mauricio",
+        "Juan Carlos Vanegas Molina",
+        "Guido Arturo Broccoli",
+        "Neldy Rolando",
+        "Brizuela",
+    ):
+        assert confirmed_name_fragment in body
+    assert "Proyecto original" in body
+    assert "Recuperaci" in body
+    assert "posterior" in body
+    assert "No se asignan roles" in body

@@ -79,6 +79,27 @@ def render_about_overview(*, direct: bool, multilingual: bool, hybrid: bool) -> 
             <p>El proyecto original fue un desarrollo grupal de H12-25-L-Equipo-72 de No Country.
             La recuperación técnica y evolución posterior para portfolio se documentan por separado.</p></article>
         </section>
+        <section class="about-team">
+            <span class="about-eyebrow">ORIGEN Y EQUIPO</span>
+            <h3>H12-25-L-Equipo-72 · No Country</h3>
+            <p>Sentiment AI nació como un desarrollo colaborativo. Los integrantes cuya
+            participación activa está confirmada son:</p>
+            <div class="about-team-members">
+                <span>Carlos Mauricio Rondón</span>
+                <span>Juan Carlos Vanegas Molina</span>
+                <span>Guido Arturo Broccoli</span>
+                <span>Neldy Rolando Velásquez Samolo</span>
+                <span>José Julián Gómez Brizuela</span>
+            </div>
+            <p class="about-team-note">El código, el entrenamiento, los datos preparados,
+            los artefactos y las primeras implementaciones fueron resultado del trabajo grupal.
+            No se asignan roles técnicos individuales sin evidencia verificable.</p>
+            <div class="about-stages">
+                <article><b>Proyecto original</b><span>Base colaborativa, modelo y primeras implementaciones.</span></article>
+                <article><b>Recuperación técnica</b><span>Artefactos reproducibles e inferencia local para portfolio.</span></article>
+                <article><b>Evolución posterior</b><span>Analytics, experiencia de producto, evaluación y documentación.</span></article>
+            </div>
+        </section>
         <section class="about-history"><strong>Historia verificable</strong><p>La aplicación actual se inspira
         funcionalmente en la aplicación histórica posterior, cuyo código no está disponible;
         no afirma reconstruir ese código. La atribución completa y las contribuciones verificables

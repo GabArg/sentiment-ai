@@ -746,7 +746,7 @@ def load_global_styles() -> None:
         }
         .about-eyebrow { color:var(--positive); font-size:.55rem; font-weight:800; letter-spacing:.12em; }
         .about-hero h2 { max-width:44rem; margin:.42rem 0 .5rem; color:var(--ink); font-size:1.45rem; line-height:1.12; }
-        .about-hero p,.about-grid p,.about-history p { margin:0; color:var(--muted); font-size:.66rem; line-height:1.65; }
+        .about-hero p,.about-grid p,.about-history p,.about-team p { margin:0; color:var(--muted); font-size:.66rem; line-height:1.65; }
         .about-hero aside { align-self:stretch; padding:1rem; border-radius:11px; background:var(--navy); color:#FFF; }
         .about-hero aside strong,.about-hero aside span { display:block; }
         .about-hero aside strong { margin-bottom:.45rem; font-size:.72rem; }
@@ -769,6 +769,16 @@ def load_global_styles() -> None:
         .about-privacy h3 { margin-top:0; color:#FFF; }
         .about-privacy p { margin:0; color:#CFD9DE; font-size:.63rem; line-height:1.65; }
         .about-method article { background:#FAFBFB; }
+        .about-team { padding:1.2rem 1.25rem; margin-bottom:1rem; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
+        .about-team h3 { margin:.3rem 0 .4rem; color:var(--ink); font-size:.9rem; }
+        .about-team-members { display:flex; flex-wrap:wrap; gap:.45rem; margin:.85rem 0; }
+        .about-team-members span { padding:.38rem .55rem; border:1px solid var(--line); border-radius:7px; background:#F7F9F8; color:var(--ink); font-size:.59rem; font-weight:650; }
+        .about-team .about-team-note { padding:.7rem .8rem; border-left:2px solid var(--positive); background:var(--accent-soft); }
+        .about-stages { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; margin-top:.85rem; }
+        .about-stages article { padding:.72rem; border-radius:9px; background:#F4F7F6; }
+        .about-stages b,.about-stages span { display:block; }
+        .about-stages b { color:var(--ink); font-size:.61rem; }
+        .about-stages span { margin-top:.2rem; color:var(--muted); font-size:.55rem; line-height:1.45; }
         .about-history { padding:.9rem 1rem; border-left:3px solid var(--positive); background:#F3F7F5; }
         .about-history strong { color:var(--ink); font-size:.64rem; }
         .about-history p { margin-top:.25rem; }
@@ -778,6 +788,7 @@ def load_global_styles() -> None:
             .about-pipeline article { width:100%; min-height:0; }
             .about-pipeline > i { transform:rotate(90deg); }
             .about-privacy { grid-template-columns:1fr; gap:.45rem; }
+            .about-stages { grid-template-columns:1fr; }
         }
 
         /* Individual analysis workspace */
