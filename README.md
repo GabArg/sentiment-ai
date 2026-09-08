@@ -1,104 +1,50 @@
 # Sentiment AI
 
-Sentiment AI es un dashboard de customer feedback que combina clasificación local, análisis masivo, métricas de negocio y revisiones de IA opcionales. La aplicación funciona en modo local por defecto; los servicios externos sólo se activan mediante flags o acciones explícitas.
+**Análisis de Opiniones de Clientes**
 
-## Demo en vivo
+Sentiment AI es una aplicación de portfolio para clasificar, explorar y comunicar feedback de clientes. Funciona con un modelo local por defecto y mantiene separadas las revisiones externas opcionales, con trazabilidad sobre el origen de cada resultado.
 
-[Probar Sentiment AI v2](https://sentiment-ai-fu52eqobppy4baddnslh6c.streamlit.app)
+[Abrir la demo](https://sentiment-ai-fu52eqobppy4baddnslh6c.streamlit.app)
 
-La demo pública permite probar análisis individual, procesamiento batch, dashboard, Pareto 80/20 e informe ejecutivo. Los servicios externos de IA se utilizan únicamente en las rutas configuradas y están sujetos a límites de disponibilidad y cuota.
+**Stack:** Python · Streamlit · scikit-learn · Pandas · Plotly · Cerebras (opcional)
 
-**Stack:** Python · Streamlit · scikit-learn · Pandas · Plotly · Cerebras
+## Qué permite hacer
 
-## Demo / qué resuelve
+- Analizar un comentario y consultar las probabilidades del modelo local.
+- Procesar archivos CSV de hasta 10.000 filas, conservar su orden y exportar resultados en UTF-8.
+- Revisar distribución de sentimientos, confianza local y trazabilidad de las rutas utilizadas.
+- Ordenar n-gramas frecuentes del feedback negativo mediante un Pareto 80/20.
+- Generar un informe ejecutivo determinístico y descargarlo.
+- Solicitar, cuando está configurado, revisión externa o redacción asistida sobre datos minimizados.
 
-La aplicación transforma comentarios individuales o archivos CSV en información útil para explorar la experiencia del cliente:
+El Pareto es léxico: muestra términos frecuentes, no categorías semánticas, causas verificadas ni severidad de negocio.
 
-- clasifica sentimientos con resultado y origen trazables;
-- procesa hasta 10.000 filas conservando el orden y permite exportarlas en UTF-8;
-- presenta distribución, confianza local y métricas de negocio;
-- identifica temas negativos y construye un Pareto 80/20;
-- genera un informe ejecutivo determinístico y, opcionalmente, una redacción asistida por IA.
-
-## Origen del proyecto
-
-Sentiment AI nació como **H12-25-L-Equipo-72**, un proyecto colaborativo de No Country. Los integrantes que participaron activamente en el proyecto fueron:
-
-- Carlos Mauricio Rondón
-- Juan Carlos Vanegas Molina
-- Guido Arturo Broccoli
-- Neldy Rolando Velásquez Samolo
-- José Julián Gómez Brizuela
-
-El modelo original, sus artefactos y las primeras implementaciones surgieron del trabajo grupal. El proyecto histórico incluyó una arquitectura con FastAPI/OCI, frontend web, análisis de sentimiento y capacidades documentadas de traducción y revisión con Cerebras. No se presenta ese trabajo como creación exclusiva de una sola persona.
-
-La procedencia técnica, los repositorios históricos y el alcance de las contribuciones están documentados en [ATTRIBUTION.md](ATTRIBUTION.md).
-
-## Evolución para portfolio
-
-A partir de esa base histórica, retomé el proyecto, recuperé una versión reproducible del modelo y desarrollé una evolución técnica orientada a portfolio, analítica de negocio, confiabilidad y uso responsable de IA.
-
-Esta evolución posterior incorporó:
-
-- recuperación reproducible de los artefactos TF-IDF + LogisticRegression;
-- inferencia local y arquitectura modular;
-- análisis individual y procesamiento batch de archivos CSV;
-- dashboard de analytics y métricas de negocio;
-- extracción de temas negativos y Pareto 80/20;
-- informe ejecutivo determinístico y redacción IA opcional;
-- revisión híbrida opt-in para casos derivados por un router auditable;
-- evaluación del modelo local y benchmark manual versionado;
-- arquitectura multilingüe experimental;
-- direct structured review para ES/EN/PT/IT mediante Structured Outputs y JSON Schema;
-- anonimización, minimización de datos y fallback observable;
-- límites de presupuesto, control de rate limits y pacing compartido;
-- tests automatizados, GitHub Actions CI y documentación técnica;
-- preparación y publicación de la release candidate `v2.0.0-rc1`.
-
-El soporte multilingüe sigue siendo experimental: fue validado sobre muestras pequeñas y curadas, no como una capacidad productiva general.
-
-## Resultados y validación
-
-| Evaluación | Resultado | Alcance |
-|---|---:|---|
-| holdout histórico reconstruido | ~89.42% | corpus histórico; no reentrenado en v2 |
-| baseline local manual | 31/60, 51.67% | benchmark dirigido externo; neutral débil |
-| hybrid manual | 59/60, 98.33% | mismo benchmark pequeño; Cerebras sólo en derivados |
-| multilingüe directo | 47/48, 97.92% | muestra curada ES/EN/PT/IT; no benchmark general |
-| pacing endurecido | 15/15 success, 0 HTTP 429 | prueba operativa separada; no mide accuracy |
-
-Estas métricas corresponden a evaluaciones distintas, no son intercambiables y no representan rendimiento productivo. Los experimentos completos están indexados en [docs/experiments/README.md](docs/experiments/README.md).
-
-## Arquitectura
+## Cómo funciona
 
 ```text
 texto / CSV → validación
-├─ español largo → TF-IDF + LogisticRegression → hybrid opcional
-├─ EN/PT/IT largo → direct structured review opcional
-├─ <=4 tokens → short_text_uncertain → direct review opcional
-└─ errores externos → fallback local observable
+├─ español largo → TF-IDF + LogisticRegression → revisión híbrida opcional
+├─ EN/PT/IT largo → revisión multilingüe directa opcional
+├─ texto breve → idioma incierto → revisión directa opcional
+└─ error externo → fallback local observable
 
-resultados → dashboard → temas/Pareto → informe → exports
+resultados → dashboard → términos/Pareto → informe → exportación
 ```
 
-La ruta recomendada para textos no españoles es una sola llamada estructurada sobre el comentario anonimizado. La traducción previa a español permanece disponible como ruta legacy/experimental por fidelidad histórica. Más detalles: [arquitectura](docs/architecture.md) y [ADR 001](docs/adr/001-direct-multilingual-review.md).
+El clasificador local ternario usa un vectorizador TF-IDF y una regresión logística congelados. `confidence` es la probabilidad asignada por `predict_proba` a la clase elegida; sirve como contexto técnico, no como garantía calibrada de acierto.
 
-## Privacidad
+Los modos externos están desactivados por defecto. Cuando una ruta habilitada envía texto, transmite únicamente el comentario anonimizado y no las otras columnas del CSV. El informe asistido recibe agregados minimizados. La anonimización reduce el riesgo, pero no garantiza desidentificación completa. Véase [Privacidad](docs/privacy.md).
 
-Los flags están OFF por defecto. Cuando hay revisión o traducción externa se envía sólo el comentario anonimizado, sin expected, confianza local, fila completa ni columnas de negocio. El informe IA recibe únicamente agregados minimizados. La anonimización reduce el riesgo, pero no garantiza la desidentificación de nombres o contexto libre. Véase [docs/privacy.md](docs/privacy.md).
+## Vistas de la aplicación
 
-## Calidad de ingeniería
+- **Análisis individual:** resultado, probabilidades locales y trazabilidad progresiva.
+- **Análisis masivo:** importación, configuración, vista previa, resultados y descarga.
+- **Dashboard:** volumen, distribución, confianza local y términos negativos frecuentes.
+- **Pareto 80/20:** concentración léxica del feedback clasificado como negativo.
+- **Informe ejecutivo:** brief determinístico; la variante asistida por IA es independiente y opcional.
+- **Acerca del proyecto:** arquitectura, metodología, privacidad, límites e historia.
 
-- 214 tests automatizados;
-- 90% de cobertura sobre `src`;
-- GitHub Actions CI para pull requests y `main`;
-- validaciones con `compileall` y `pip check`;
-- fallbacks explícitos ante errores externos;
-- separación entre inferencia local y servicios externos;
-- flags externos OFF por defecto;
-- trazabilidad de rutas, budgets y estados de revisión.
-
-## Instalación
+## Ejecución local
 
 Requiere Python 3.12.
 
@@ -108,20 +54,22 @@ cd sentiment-ai
 python -m venv .venv
 # Windows: .venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app.py
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
 ```
 
-## Configuración
+No se necesita una cuenta de Cerebras para usar el análisis local, el procesamiento masivo, el dashboard, el Pareto ni el informe determinístico.
 
-Copiá `.streamlit/secrets.toml.example` como `.streamlit/secrets.toml` o usá variables de entorno. Nunca versiones el archivo real.
+## Configuración externa opcional
+
+Copiá `.streamlit/secrets.toml.example` como `.streamlit/secrets.toml` o usá variables de entorno. No versiones el archivo real ni muestres la API key en logs o capturas.
 
 ```toml
 CEREBRAS_API_KEY = "..."
 
 ENABLE_HYBRID_SENTIMENT = false
-ENABLE_MULTILINGUAL_SENTIMENT = false       # traducción legacy
-ENABLE_DIRECT_MULTILINGUAL_REVIEW = false   # ruta moderna candidata
+ENABLE_MULTILINGUAL_SENTIMENT = false
+ENABLE_DIRECT_MULTILINGUAL_REVIEW = false
 
 HYBRID_THRESHOLD_NEGATIVE = 0.80
 HYBRID_THRESHOLD_NEUTRAL = 0.65
@@ -132,28 +80,50 @@ HYBRID_WINDOW_SECONDS = 60
 EXTERNAL_RATE_LIMIT_SAFETY_SECONDS = 2.0
 ```
 
-Configurar la API key no activa ningún modo. El informe IA se genera sólo al pulsar su botón. La tabla completa de precedencia y aliases está en [docs/architecture.md](docs/architecture.md).
+Configurar la clave no activa por sí solo ninguna ruta. El informe asistido se solicita mediante una acción explícita. La precedencia completa de configuración está documentada en [Arquitectura](docs/architecture.md).
 
-## Testing
+## Evaluación y reproducibilidad
+
+Las evaluaciones disponibles responden a condiciones distintas y no deben combinarse ni interpretarse como una garantía de rendimiento:
+
+| Evaluación | Resultado observado | Condición principal |
+|---|---:|---|
+| Holdout histórico reconstruido | ~89,42% accuracy | split por filas del corpus histórico; comparte familias textuales y puede ser optimista |
+| Benchmark manual de 60 | 51,67% accuracy; 20% recall neutro | muestra pequeña y dirigida, ya utilizada para diagnóstico |
+| Demo sintético de 104 | 75,00% accuracy; 6,67% recall neutro | datos sintéticos, desbalanceados y no independientes |
+| Revisión híbrida sobre los 60 | 98,33% accuracy | reproducción exploratoria sobre el mismo benchmark, con resultados externos observados |
+| Validación multilingüe directa | 47/48 casos | muestra pequeña y curada ES/EN/PT/IT |
+
+La principal debilidad observada es la neutralidad factual fuera del dominio histórico. Los 60 y 104 casos son benchmarks diagnósticos/regresivos, no conjuntos independientes para seleccionar modelos, reglas o thresholds. La [síntesis de evaluación](docs/quality-evaluation.md) explica matrices, condiciones y limitaciones; los reportes reproducibles completos permanecen en [artifacts/experiments](artifacts/experiments/).
+
+Para ejecutar las comprobaciones locales:
 
 ```bash
-pip install -r requirements-dev.txt
-pytest --cov=src --cov-report=term-missing
+python -m pip install -r requirements-dev.txt
+pytest
 python -m compileall app.py src scripts tests
 python -m pip check
 ```
 
-## Limitaciones
+## Limitaciones conocidas
 
-- El modelo local fue entrenado históricamente y falla especialmente en neutrales fuera de dominio.
-- El benchmark multilingüe es pequeño, manual y limitado a ES/EN/PT/IT.
-- Los textos breves no usan detección de idioma; se marcan como inciertos.
-- Los modos externos dependen de disponibilidad, cuota, costo y límites de Cerebras.
-- El Free Tier configurado para la demo usa pacing conservador y puede hacer lento un batch.
-- Los temas negativos son señales léxicas, no causas de negocio inferidas.
+- El modelo local fue entrenado con un corpus histórico y generaliza peor a neutrales factuales y redacciones fuera de dominio.
+- La confianza local no equivale a probabilidad calibrada de corrección.
+- El Pareto cuenta n-gramas; no detecta categorías de negocio ni causalidad.
+- Las validaciones híbrida y multilingüe son pequeñas y exploratorias.
+- Los modos externos dependen de disponibilidad, cuota, costo y límites del proveedor.
+- Los textos muy breves se marcan con idioma incierto en lugar de asumirlo.
 
-## Historia y créditos
+## Alcance actual y trabajo futuro
 
-Sentiment AI tiene dos etapas claramente diferenciadas: el proyecto grupal original de No Country y la recuperación/evolución v2 desarrollada posteriormente en este repositorio. La autoría de ambas etapas se documenta por separado para preservar correctamente la procedencia del trabajo.
+Está implementada la experiencia local completa, junto con rutas externas opt-in, controles de privacidad, presupuestos, rate limiting, fallbacks, tests y documentación técnica. La investigación de neutralidad y el protocolo de anotación están versionados como trabajo experimental.
 
-Los créditos completos, las fuentes históricas y el detalle de la evolución están en [ATTRIBUTION.md](ATTRIBUTION.md). El proyecto se distribuye bajo [GPL-3.0](LICENSE).
+No están implementados un clasificador de categorías de negocio, un Pareto semántico ni una mejora de modelo seleccionada con evaluación humana independiente. Esos puntos permanecen como trabajo futuro.
+
+## Historia y atribución
+
+Sentiment AI nació como **H12-25-L-Equipo-72**, un proyecto colaborativo de No Country. Carlos Mauricio Rondón, Juan Carlos Vanegas Molina, Guido Arturo Broccoli, Neldy Rolando Velásquez Samolo y José Julián Gómez Brizuela participaron activamente en esa etapa. El modelo original, sus artefactos y las primeras implementaciones surgieron de ese trabajo grupal.
+
+Posteriormente retomé el proyecto para recuperar una versión reproducible y desarrollar esta evolución de portfolio. La procedencia técnica, los repositorios históricos y el alcance de cada etapa están documentados en [ATTRIBUTION.md](ATTRIBUTION.md); no se presenta el trabajo grupal como creación exclusiva de una sola persona.
+
+El proyecto se distribuye bajo [GPL-3.0](LICENSE).

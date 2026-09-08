@@ -45,11 +45,11 @@ def render_about_overview(*, direct: bool, multilingual: bool, hybrid: bool) -> 
     render_html(
         f"""
         <section class="about-hero">
-            <div><span class="about-eyebrow">CUSTOMER INTELLIGENCE WORKSPACE</span>
-            <h2>Del comentario aislado a una lectura accionable del feedback</h2>
-            <p>Sentiment AI organiza grandes volúmenes de texto, hace visible la distribución
-            de sentimiento y ayuda a priorizar qué revisar, con trazabilidad sobre cada ruta.</p></div>
-            <aside><strong>Diseñado para decidir</strong><span>Clasificación reproducible,
+            <div><span class="about-eyebrow">ANÁLISIS DE OPINIONES DE CLIENTES</span>
+            <h2>Del comentario individual a una visión ordenada del feedback</h2>
+            <p>Sentiment AI organiza comentarios, muestra la distribución de sentimiento
+            y permite revisar términos frecuentes, con trazabilidad sobre cada ruta.</p></div>
+            <aside><strong>Información para revisar</strong><span>Clasificación reproducible,
             analítica agregada y revisión externa opcional.</span></aside>
         </section>
         <section class="about-section">
@@ -77,9 +77,9 @@ def render_about_overview(*, direct: bool, multilingual: bool, hybrid: bool) -> 
             frecuentes: no los convierte en categorías semánticas ni afirma causalidad.</p></article>
             <article><span class="about-eyebrow">PROCEDENCIA</span><h3>Dos etapas, atribución separada</h3>
             <p>El proyecto original fue un desarrollo grupal de H12-25-L-Equipo-72 de No Country.
-            La recuperación técnica y evolución v2 para portfolio se documentan por separado.</p></article>
+            La recuperación técnica y evolución posterior para portfolio se documentan por separado.</p></article>
         </section>
-        <section class="about-history"><strong>Historia verificable</strong><p>Esta v2 se inspira
+        <section class="about-history"><strong>Historia verificable</strong><p>La aplicación actual se inspira
         funcionalmente en la aplicación histórica posterior, cuyo código no está disponible;
         no afirma reconstruir ese código. La atribución completa y las contribuciones verificables
         están en <code>ATTRIBUTION.md</code>.</p></section>

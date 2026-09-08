@@ -134,7 +134,7 @@ def render_attention_panel(view: dict[str, object]) -> None:
             f"""
             <div class="overview-topic-row">
                 <span>{topic['rank']:02d}</span>
-                <div><strong>{html.escape(topic['topic'])}</strong><small>Tema frecuente en feedback negativo</small></div>
+                <div><strong>{html.escape(topic['topic'])}</strong><small>Término frecuente en feedback negativo</small></div>
                 <b>{topic['frequency']:,}</b>
             </div>
             """
@@ -142,7 +142,7 @@ def render_attention_panel(view: dict[str, object]) -> None:
         )
         topics_markup = rows or """
             <div class="overview-no-topics">
-                No hay suficientes términos repetidos para extraer temas prioritarios.
+                No hay suficientes términos repetidos para construir un ranking.
             </div>
         """
         body = f"""
@@ -158,7 +158,7 @@ def render_attention_panel(view: dict[str, object]) -> None:
         <section class="overview-attention">
             <div class="overview-attention-title"><span>Prioridad operativa</span><h3>Qué requiere atención</h3></div>
             {body}
-            <p class="overview-method-note">Los temas son n-gramas frecuentes, no causas verificadas.</p>
+            <p class="overview-method-note">Los términos son n-gramas frecuentes, no categorías ni causas verificadas.</p>
         </section>
         """
     )
@@ -174,7 +174,7 @@ def render_dataset_reading(view: dict[str, object], traceability: str | None) ->
         ratio_detail = "positivos por cada negativo"
     if int(view["priority_topic_count"]):
         pareto_value = str(view["priority_topic_count"])
-        pareto_detail = "temas forman el primer bloque del Pareto 80/20"
+        pareto_detail = "términos forman el primer bloque del Pareto 80/20"
     else:
         pareto_value = "—"
         pareto_detail = "sin Pareto disponible para este lote"

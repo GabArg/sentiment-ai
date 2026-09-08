@@ -17,7 +17,7 @@ def render_product_header() -> None:
             <div class="product-header-main">
                 <span class="product-header-eyebrow">Customer Feedback Analytics</span>
                 <h1 class="product-header-title">Sentiment AI</h1>
-                <p class="product-header-description">Convertí comentarios de clientes en señales accionables.</p>
+                <p class="product-header-description">Clasificá y explorá comentarios con trazabilidad visible.</p>
             </div>
             <div class="product-header-tagline">
                 Python · ML local · Analytics · AI-assisted review
@@ -43,7 +43,7 @@ def render_sidebar_footer(*, batch_count: int | None = None) -> None:
     st.markdown(
         """
         <div class="sidebar-footer">
-            <div class="sidebar-footer-title">Sentiment AI v2 · RC</div>
+            <div class="sidebar-footer-title">Sentiment AI</div>
             <div class="sidebar-footer-badge">Local-first</div>
         </div>
         """,

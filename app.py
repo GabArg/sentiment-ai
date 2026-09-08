@@ -1,4 +1,4 @@
-"""Sentiment AI v2 — customer feedback analytics in Streamlit.
+"""Sentiment AI — análisis de opiniones de clientes en Streamlit.
 
 Recovered from team project H12-25-L-Equipo-72 and evolved for portfolio use.
 See ATTRIBUTION.md and LICENSE (GPL-3.0).
@@ -108,7 +108,7 @@ EXTERNAL_ERROR_LABELS = {
 }
 
 st.set_page_config(
-    page_title="Sentiment AI v2 | Customer Feedback Analytics",
+    page_title="Sentiment AI | Análisis de Opiniones de Clientes",
     page_icon="◉",
     layout="wide",
     initial_sidebar_state="expanded",

@@ -21,14 +21,14 @@ PAGE_META = {
         "Cargá un CSV, elegí la columna de comentarios y procesá el lote.",
     ),
     "Dashboard": (
-        "Customer feedback overview",
-        "La voz de tus clientes, en foco.",
-        "Detectá señales relevantes, entendé el contexto y priorizá dónde actuar.",
+        "Resumen del feedback",
+        "Opiniones de clientes, en contexto.",
+        "Revisá la distribución, la confianza local y los términos negativos frecuentes.",
     ),
     "Pareto 80/20": (
         "Entender",
         "Prioridades del feedback negativo",
-        "Identificá los temas que concentran la mayor parte de las menciones negativas.",
+        "Revisá los términos que concentran la mayor parte de las menciones negativas.",
     ),
     "Informe ejecutivo": (
         "Comunicar",
@@ -76,7 +76,7 @@ def render_sidebar_brand() -> None:
             </div>
             <div>
                 <strong>Sentiment AI</strong>
-                <span>Customer intelligence</span>
+                <span>Análisis de opiniones</span>
             </div>
         </div>
         """
@@ -111,8 +111,8 @@ def render_sidebar_signature() -> None:
         """
         <div class="workspace-signature">
             <span>SA</span>
-            <div><strong>Workspace local</strong><small>Privacidad primero</small></div>
-            <b>v2 · RC</b>
+            <div><strong>Análisis local</strong><small>Privacidad primero</small></div>
+            <b>Local-first</b>
         </div>
         """
     )
@@ -133,7 +133,7 @@ def render_workspace_empty_state(message: str) -> None:
         <section class="workspace-empty-state">
             <div class="workspace-empty-icon">▦</div>
             <div>
-                <strong>El workspace todavía no tiene datos</strong>
+                <strong>El espacio de análisis todavía no tiene datos</strong>
                 <p>{html.escape(message)}</p>
             </div>
         </section>
