@@ -43,24 +43,42 @@ def load_global_styles() -> None:
         .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
             border-radius:10px; font-weight:650; min-height:2.65rem;
         }
-        :is(.stButton, .stFormSubmitButton) > button[kind="primary"] {
+        :is(
+            .stButton > button[kind="primary"],
+            .stFormSubmitButton > button[kind="primaryFormSubmit"]
+        ) {
             background:var(--accent); border-color:var(--accent); color:#FFF;
             box-shadow:0 4px 12px rgba(22,133,107,.2);
         }
-        :is(.stButton, .stFormSubmitButton) > button[kind="primary"] :is(p, span) {
+        :is(
+            .stButton > button[kind="primary"],
+            .stFormSubmitButton > button[kind="primaryFormSubmit"]
+        ) :is(p, span) {
             color:inherit !important;
         }
-        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:hover:not(:disabled) {
+        :is(
+            .stButton > button[kind="primary"],
+            .stFormSubmitButton > button[kind="primaryFormSubmit"]
+        ):hover:not(:disabled) {
             background:var(--navy); border-color:var(--navy); color:#FFF;
         }
-        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:active:not(:disabled) {
+        :is(
+            .stButton > button[kind="primary"],
+            .stFormSubmitButton > button[kind="primaryFormSubmit"]
+        ):active:not(:disabled) {
             background:var(--navy-raised); border-color:var(--navy-raised); color:#FFF;
             box-shadow:inset 0 2px 4px rgba(0,0,0,.18);
         }
-        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:focus-visible {
+        :is(
+            .stButton > button[kind="primary"],
+            .stFormSubmitButton > button[kind="primaryFormSubmit"]
+        ):focus-visible {
             color:#FFF; outline:3px solid rgba(22,133,107,.32); outline-offset:2px;
         }
-        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:disabled {
+        :is(
+            .stButton > button[kind="primary"],
+            .stFormSubmitButton > button[kind="primaryFormSubmit"]
+        ):disabled {
             background:#526B65; border-color:#526B65; color:#FFF;
             box-shadow:none; opacity:1; cursor:not-allowed;
         }
