@@ -40,9 +40,30 @@ def load_global_styles() -> None:
         }
         .product-label { color:var(--accent); font-weight:800; letter-spacing:.09em; text-transform:uppercase; font-size:.7rem; }
         .product-copy { color:var(--muted); line-height:1.55; font-size:.88rem; }
-        .stButton > button, .stDownloadButton > button { border-radius:10px; font-weight:650; min-height:2.65rem; }
-        .stButton > button[kind="primary"] { background:var(--accent); border-color:var(--accent); box-shadow:0 4px 12px rgba(79,70,229,.18); }
-        .stButton > button[kind="primary"]:hover { background:var(--navy); border-color:var(--navy); }
+        .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
+            border-radius:10px; font-weight:650; min-height:2.65rem;
+        }
+        :is(.stButton, .stFormSubmitButton) > button[kind="primary"] {
+            background:var(--accent); border-color:var(--accent); color:#FFF;
+            box-shadow:0 4px 12px rgba(22,133,107,.2);
+        }
+        :is(.stButton, .stFormSubmitButton) > button[kind="primary"] :is(p, span) {
+            color:inherit !important;
+        }
+        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:hover:not(:disabled) {
+            background:var(--navy); border-color:var(--navy); color:#FFF;
+        }
+        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:active:not(:disabled) {
+            background:var(--navy-raised); border-color:var(--navy-raised); color:#FFF;
+            box-shadow:inset 0 2px 4px rgba(0,0,0,.18);
+        }
+        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:focus-visible {
+            color:#FFF; outline:3px solid rgba(22,133,107,.32); outline-offset:2px;
+        }
+        :is(.stButton, .stFormSubmitButton) > button[kind="primary"]:disabled {
+            background:#526B65; border-color:#526B65; color:#FFF;
+            box-shadow:none; opacity:1; cursor:not-allowed;
+        }
         [data-testid="stAlert"] { border-radius:12px; }
         hr { border-color:var(--line); }
         #MainMenu, footer { visibility:hidden; }
