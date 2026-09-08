@@ -32,6 +32,11 @@ from .pareto_view import (
     render_pareto_summary,
     render_priority_ranking,
 )
+from .report_view import (
+    parse_report_sections,
+    render_ai_report_intro,
+    render_deterministic_brief,
+)
 from .shell import (
     format_navigation_label,
     render_dataset_context,
@@ -47,15 +52,18 @@ __all__ = [
     "build_dashboard_view_model",
     "build_traceability_text",
     "build_pareto_view_model",
+    "parse_report_sections",
     "render_batch_csv_preview",
     "render_batch_kpi_cards",
     "render_batch_results_header",
     "render_batch_summary_band",
     "render_batch_upload_empty",
     "render_attention_panel",
+    "render_ai_report_intro",
     "render_confidence_context_chart",
     "render_dashboard_kpis",
     "render_dataset_reading",
+    "render_deterministic_brief",
     "render_panel_heading",
     "render_pareto_detail_table",
     "render_pareto_methodology",

@@ -53,9 +53,11 @@ from src.ui import (
     render_batch_summary_band,
     render_batch_upload_empty,
     render_attention_panel,
+    render_ai_report_intro,
     render_confidence_context_chart,
     render_dashboard_kpis,
     render_dataset_reading,
+    render_deterministic_brief,
     render_panel_heading,
     render_pareto_detail_table,
     render_pareto_methodology,
@@ -647,11 +649,10 @@ def render_report() -> None:
     try:
         _, metrics, pareto = get_analysis()
     except ValueError as exc:
-        st.info(str(exc))
+        render_workspace_empty_state(str(exc))
         return
     deterministic = generate_deterministic_report(metrics, pareto)
-    st.subheader("Informe generado sin IA")
-    st.markdown(deterministic)
+    render_deterministic_brief(deterministic)
     st.download_button(
         "Descargar informe determinístico",
         data=deterministic.encode("utf-8"),
@@ -660,13 +661,16 @@ def render_report() -> None:
         width="stretch",
     )
 
-    st.divider()
-    st.subheader("Informe IA opcional con Cerebras")
-    st.write(f"Modelo: `{DEFAULT_CEREBRAS_MODEL}`. La llamada ocurre sólo al pulsar el botón y nunca recibe el CSV completo.")
     context = prepare_ai_context(metrics, pareto)
     size = estimate_payload(context)
-    st.caption(f"Payload estimado: {size['characters']:,} caracteres (~{size['approximate_tokens']:,} tokens), más el prompt versionado.")
     key = _streamlit_cerebras_key()
+    st.divider()
+    render_ai_report_intro(
+        DEFAULT_CEREBRAS_MODEL,
+        size["characters"],
+        size["approximate_tokens"],
+        bool(key),
+    )
     if not key:
         st.info("CEREBRAS_API_KEY no está configurada. El informe determinístico permanece disponible.")
     if st.button("Generar informe con IA", disabled=not bool(key), type="primary", width="stretch"):
@@ -682,15 +686,16 @@ def render_report() -> None:
             st.warning("Cerebras no respondió correctamente. Se muestra el informe ejecutivo generado sin IA.")
     if "ai_report" in st.session_state:
         label = "Informe generado con IA" if st.session_state.get("ai_report_used_ai") else "Informe ejecutivo generado sin IA"
-        st.subheader(label)
-        st.markdown(st.session_state["ai_report"])
-        st.download_button(
-            "Descargar informe mostrado",
-            data=st.session_state["ai_report"].encode("utf-8"),
-            file_name="ai_business_insights.md",
-            mime="text/markdown",
-            width="stretch",
-        )
+        with st.container(border=True):
+            render_panel_heading("Resultado opcional", label)
+            st.markdown(st.session_state["ai_report"])
+            st.download_button(
+                "Descargar informe mostrado",
+                data=st.session_state["ai_report"].encode("utf-8"),
+                file_name="ai_business_insights.md",
+                mime="text/markdown",
+                width="stretch",
+            )
 
 
 def render_about() -> None:

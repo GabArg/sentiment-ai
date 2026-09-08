@@ -205,6 +205,27 @@ def test_pareto_page_renders_priority_view_from_active_batch():
     assert len(app.dataframe) == 1
 
 
+def test_report_page_renders_structured_deterministic_brief_without_external_call(monkeypatch):
+    monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.session_state["batch_results"] = pd.DataFrame(
+        {
+            "text": ["entrega tarde", "soporte no responde", "excelente atención"],
+            "sentiment": ["Negativo", "Negativo", "Positivo"],
+            "confidence": [0.9, 0.8, 0.9],
+        }
+    )
+    app.radio[0].set_value("Informe ejecutivo").run()
+
+    assert not app.exception
+    visible = " ".join(item.value for item in app.markdown)
+    assert "Generado con reglas determinísticas" in visible
+    assert "Términos negativos frecuentes" in visible
+    assert "Alcance metodológico" in visible
+    assert "nunca recibe el CSV completo ni comentarios individuales" in visible
+    assert len(app.get("download_button")) == 1
+
+
 def _mock_translation(source_language, translated_text, *, success=True, error_code=None):
     return TranslationResult(
         source_language,
