@@ -45,6 +45,7 @@ from src.rate_pacer import RatePacer
 from src.translation import CerebrasTranslationProvider
 from src.structured_sentiment_review import StructuredSentimentReviewProvider
 from src.ui import (
+    format_navigation_label,
     load_global_styles,
     render_batch_csv_preview,
     render_batch_kpi_cards,
@@ -52,9 +53,11 @@ from src.ui import (
     render_batch_summary_band,
     render_batch_upload_empty,
     render_probability_chart,
-    render_product_header,
+    render_dataset_context,
+    render_page_header,
     render_result_card,
-    render_sidebar_footer,
+    render_sidebar_brand,
+    render_sidebar_signature,
 )
 from src.ui.charts import SENTIMENT_COLORS, apply_plotly_theme
 
@@ -139,7 +142,6 @@ def render_metric_cards(metrics: dict[str, object]) -> None:
 
 
 def render_individual() -> None:
-    st.header("Análisis individual")
     st.write("Clasificá una opinión con el modelo local y revisá la probabilidad de cada clase aprendida.")
     st.caption("Procesamiento local-first: inferencia determinística en la sesión con modelo empaquetado.")
     with st.form("individual_form"):
@@ -178,7 +180,6 @@ def render_individual() -> None:
 
 
 def render_batch() -> None:
-    st.header("Análisis masivo")
     st.markdown("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
     if uploaded is None:
@@ -234,7 +235,6 @@ def render_individual_controlled() -> None:
     if not config.enabled and not multilingual.enabled and not direct_config.enabled:
         render_individual()
         return
-    st.header("Análisis individual")
     if direct_config.enabled:
         st.write("Los textos no españoles o breves pueden recibir una revisión multilingüe directa sobre el comentario anonimizado.")
     elif multilingual.enabled:
@@ -386,7 +386,6 @@ def render_batch_controlled() -> None:
     if not config.enabled and not multilingual.enabled and not direct_config.enabled:
         render_batch()
         return
-    st.header("Análisis masivo")
     if direct_config.enabled:
         st.markdown("Los textos no españoles o breves usan revisión multilingüe directa; no se traducen.")
     elif multilingual.enabled:
@@ -564,7 +563,6 @@ def render_batch_traceability(results: pd.DataFrame, summary: dict, kind: str) -
 
 
 def render_dashboard() -> None:
-    st.header("Dashboard")
     try:
         results, metrics, _ = get_analysis()
     except ValueError as exc:
@@ -634,7 +632,6 @@ def render_dashboard() -> None:
 
 
 def render_pareto() -> None:
-    st.header("Pareto de feedback negativo")
     st.write("Los temas son n-gramas presentes en comentarios negativos. Se cuentan una vez por comentario para evitar que la repetición dentro de un texto infle la frecuencia.")
     try:
         _, _, pareto = get_analysis()
@@ -670,7 +667,6 @@ def _streamlit_cerebras_key() -> str | None:
 
 
 def render_report() -> None:
-    st.header("Informe ejecutivo")
     try:
         _, metrics, pareto = get_analysis()
     except ValueError as exc:
@@ -724,7 +720,6 @@ def render_about() -> None:
     hybrid_enabled = get_hybrid_config().enabled
     multilingual_enabled = get_multilingual_config().enabled
     direct_enabled = get_direct_review_config().enabled
-    st.header("Acerca del proyecto")
     st.markdown(
         """
         **Sentiment AI v2** combina NLP clásico reproducible con analítica de feedback y un informe generativo opcional.
@@ -750,15 +745,7 @@ def render_about() -> None:
 load_global_styles()
 
 with st.sidebar:
-    st.markdown(
-        """
-        <div class="sidebar-brand">
-            <div class="product-label">Plataforma</div>
-            <div class="sidebar-brand-title">Sentiment AI</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    render_sidebar_brand()
     page = st.radio(
         "Navegación",
         [
@@ -770,13 +757,13 @@ with st.sidebar:
             "Acerca del proyecto",
         ],
         label_visibility="collapsed",
+        format_func=format_navigation_label,
     )
     batch_results = get_batch_results()
-    render_sidebar_footer(
-        batch_count=len(batch_results) if batch_results is not None else None
-    )
+    render_dataset_context(len(batch_results) if batch_results is not None else None)
+    render_sidebar_signature()
 
-render_product_header()
+render_page_header(page)
 
 pages = {
     "Análisis individual": render_individual_controlled,
