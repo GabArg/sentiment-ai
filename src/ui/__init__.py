@@ -13,6 +13,7 @@ from .batch_view import (
     render_batch_stepper,
     selectable_text_columns,
 )
+from .about import build_privacy_copy, render_about_overview
 from .dashboard import (
     build_dashboard_view_model,
     build_traceability_text,
@@ -63,6 +64,7 @@ __all__ = [
     "format_navigation_label",
     "build_dashboard_view_model",
     "build_traceability_text",
+    "build_privacy_copy",
     "build_pareto_view_model",
     "parse_report_sections",
     "prepare_batch_display",
@@ -76,6 +78,7 @@ __all__ = [
     "render_batch_stepper",
     "render_attention_panel",
     "render_ai_report_intro",
+    "render_about_overview",
     "render_confidence_context_chart",
     "render_dashboard_kpis",
     "render_dataset_reading",

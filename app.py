@@ -45,6 +45,7 @@ from src.ui import (
     build_dashboard_view_model,
     build_pareto_view_model,
     build_traceability_text,
+    render_about_overview,
     format_navigation_label,
     load_global_styles,
     prepare_batch_display,
@@ -747,26 +748,11 @@ def render_about() -> None:
     hybrid_enabled = get_hybrid_config().enabled
     multilingual_enabled = get_multilingual_config().enabled
     direct_enabled = get_direct_review_config().enabled
-    st.markdown(
-        """
-        **Sentiment AI v2** combina NLP clásico reproducible con analítica de feedback y un informe generativo opcional.
-
-        - **Proyecto original:** desarrollo grupal H12-25-L-Equipo-72 de No Country.
-        - **Recuperación V6:** TF-IDF, regresión logística ternaria y artefactos originales empaquetados localmente.
-        - **Evolución v2:** nueva implementación modular de batch CSV, dashboard, Pareto e informes para portfolio.
-
-        Esta v2 se inspira funcionalmente en la aplicación histórica posterior, cuyo código no está disponible; no afirma reconstruir ese código. La atribución completa y las contribuciones verificables están en `ATTRIBUTION.md`.
-        """
+    render_about_overview(
+        direct=direct_enabled,
+        multilingual=multilingual_enabled,
+        hybrid=hybrid_enabled,
     )
-    st.subheader("Privacidad")
-    if direct_enabled:
-        st.write("La detección y el routing de textos largos se realizan localmente. Los textos EN/PT/IT detectados y los textos breves de idioma incierto pueden enviarse a Cerebras, proveedor externo, para revisión directa; se envía únicamente el comentario anonimizado, nunca otras columnas del CSV, y el original permanece en la aplicación. El informe IA agregado es una funcionalidad separada.")
-    elif multilingual_enabled:
-        st.write("La detección de idioma es local. Los comentarios que requieren traducción se anonimizan antes de enviarse a Cerebras; nunca se envían otras columnas del CSV y el texto original queda preservado en la app. Los second checks, si están habilitados por separado, comparten el mismo límite externo.")
-    elif hybrid_enabled:
-        st.write("La clasificación local ocurre primero. Sólo comentarios derivados pueden enviarse anonimizados a Cerebras para second check; nunca se envían otras columnas del CSV. El informe IA permanece separado y sólo recibe agregados.")
-    else:
-        st.write("La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. Nunca se envían comentarios, el CSV ni sus otras columnas.")
 
 
 load_global_styles()
