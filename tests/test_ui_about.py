@@ -5,24 +5,37 @@ import streamlit as st
 from src.ui.about import build_privacy_copy, render_about_overview
 
 
-def test_direct_privacy_copy_preserves_external_review_guarantees():
+def test_direct_privacy_copy_describes_external_review_and_aggregate_report():
     copy = build_privacy_copy(direct=True, multilingual=False, hybrid=False).casefold()
 
     assert "comentario anonimizado" in copy
-    assert "nunca otras columnas del csv" in copy
-    assert "original permanece en la aplicación" in copy
-    assert "proveedor externo" in copy
-    assert "informe ia agregado es una funcionalidad separada" in copy
+    assert "excluye las demás columnas del csv" in copy
+    assert "revisión directa" in copy
+    assert "informe agregado es una acción opcional y separada" in copy
+    assert "no comentarios individuales ni el archivo csv" in copy
+    assert "no existe una garantía" in copy
 
 
-def test_local_privacy_copy_does_not_claim_comments_are_sent():
+def test_local_privacy_copy_distinguishes_current_and_optional_data_flows():
     copy = build_privacy_copy(direct=False, multilingual=False, hybrid=False).casefold()
 
-    assert "nunca se envían comentarios" in copy
-    assert "métricas y frecuencias agregadas" in copy
+    assert "análisis local" in copy
+    assert "revisión externa de comentarios está desactivada" in copy
+    assert "si se habilita" in copy
+    assert "conteos, porcentajes y métricas resumidas" in copy
+    assert "desidentificación completa" in copy
+    assert "nunca se envían comentarios" not in copy
 
 
-def test_about_renders_as_one_controlled_normalized_fragment(monkeypatch):
+def test_privacy_copy_reports_concurrent_direct_and_hybrid_routes():
+    copy = build_privacy_copy(direct=True, multilingual=True, hybrid=True).casefold()
+
+    assert "revisión directa" in copy
+    assert "revisión híbrida" in copy
+    assert "ruta multilingüe" not in copy
+
+
+def test_about_renders_clear_product_scope_before_technical_detail(monkeypatch):
     rendered = []
     monkeypatch.setattr(st, "markdown", lambda body, **kwargs: rendered.append((body, kwargs)))
 
@@ -30,8 +43,12 @@ def test_about_renders_as_one_controlled_normalized_fragment(monkeypatch):
 
     body, kwargs = rendered[0]
     assert kwargs == {"unsafe_allow_html": True}
-    assert "about-pipeline" in body
-    assert "proyecto original fue un desarrollo grupal" in body.casefold()
+    assert body.index("QUÉ PUEDE HACER") < body.index("CÓMO SE PROCESA")
+    assert "Qué permite revisar" in body
+    assert "Qué no determina" in body
+    assert "Privacidad y tratamiento de datos" in body
+    assert "Pareto ordena n-gramas frecuentes" in body
+    assert "neutrales factuales" in body
     assert "ATTRIBUTION.md" in body
 
 
@@ -43,15 +60,15 @@ def test_about_shows_confirmed_original_team_and_separates_project_stages(monkey
 
     body = rendered[0]
     assert "H12-25-L-Equipo-72" in body
-    for confirmed_name_fragment in (
-        "Carlos Mauricio",
+    for member in (
+        "Carlos Mauricio Rondón",
         "Juan Carlos Vanegas Molina",
         "Guido Arturo Broccoli",
-        "Neldy Rolando",
-        "Brizuela",
+        "Neldy Rolando Velásquez Samolo",
+        "José Julián Gómez Brizuela",
     ):
-        assert confirmed_name_fragment in body
+        assert member in body
     assert "Proyecto original" in body
-    assert "Recuperaci" in body
-    assert "posterior" in body
-    assert "No se asignan roles" in body
+    assert "Recuperación técnica" in body
+    assert "Evolución posterior" in body
+    assert "No se asignan roles técnicos individuales" in body

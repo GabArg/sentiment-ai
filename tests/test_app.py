@@ -507,8 +507,7 @@ def test_about_privacy_is_correct_for_direct_review_across_flag_combinations(mon
     assert not app.exception
     visible = " ".join(item.value for item in app.markdown).casefold()
     assert "comentario anonimizado" in visible
-    assert "nunca otras columnas del csv" in visible
-    assert "original permanece en la aplicación" in visible
-    assert "proveedor externo" in visible
-    assert "informe ia agregado es una funcionalidad separada" in visible
-    assert "nunca se envían comentarios" not in visible
+    assert "excluye las demás columnas del csv" in visible
+    assert "informe agregado es una acción opcional y separada" in visible
+    assert "no comentarios individuales ni el archivo csv" in visible
+    assert "no existe una garantía de desidentificación completa" in visible

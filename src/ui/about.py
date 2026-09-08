@@ -8,32 +8,39 @@ from .html import render_html
 
 
 def build_privacy_copy(*, direct: bool, multilingual: bool, hybrid: bool) -> str:
-    """Return the established privacy disclosure for the active routing mode."""
+    """Explain local, optional text review, and aggregate report data flows."""
+    external_routes = []
     if direct:
-        return (
-            "La detección y el routing de textos largos se realizan localmente. Los textos "
-            "EN/PT/IT detectados y los textos breves de idioma incierto pueden enviarse a "
-            "Cerebras, proveedor externo, para revisión directa; se envía únicamente el "
-            "comentario anonimizado, nunca otras columnas del CSV, y el original permanece "
-            "en la aplicación. El informe IA agregado es una funcionalidad separada."
+        external_routes.append(
+            "La revisión externa está habilitada: los textos EN/PT/IT detectados y los textos "
+            "breves de idioma incierto pueden enviarse a Cerebras para revisión directa."
         )
-    if multilingual:
-        return (
-            "La detección de idioma es local. Los comentarios que requieren traducción se "
-            "anonimizan antes de enviarse a Cerebras; nunca se envían otras columnas del CSV "
-            "y el texto original queda preservado en la app. Los second checks, si están "
-            "habilitados por separado, comparten el mismo límite externo."
+    elif multilingual:
+        external_routes.append(
+            "La ruta multilingüe está habilitada: los comentarios que requieren traducción "
+            "pueden enviarse a Cerebras y recibir después una revisión si esa opción está activa."
         )
     if hybrid:
-        return (
-            "La clasificación local ocurre primero. Sólo comentarios derivados pueden "
-            "enviarse anonimizados a Cerebras para second check; nunca se envían otras columnas "
-            "del CSV. El informe IA permanece separado y sólo recibe agregados."
+        external_routes.append(
+            "La revisión híbrida está habilitada: después de la clasificación local, los casos "
+            "derivados por el router pueden enviarse a Cerebras para un second check."
         )
+    if not external_routes:
+        external_routes.append(
+            "La revisión externa de comentarios está desactivada en la configuración actual. "
+            "Si se habilita, sólo los casos previstos por la ruta configurada pueden enviarse."
+        )
+    external_review = " ".join(external_routes)
     return (
-        "La clasificación y el dashboard son locales. Cerebras sólo recibe métricas y "
-        "frecuencias agregadas; las etiquetas textuales de los temas también se excluyen. "
-        "Nunca se envían comentarios, el CSV ni sus otras columnas."
+        "El análisis local clasifica comentarios y calcula métricas sin enviarlos a un proveedor "
+        "externo. "
+        f"{external_review} Antes de enviar texto para traducción o revisión, la aplicación "
+        "aplica anonimización; la ruta envía el comentario anonimizado y excluye las demás "
+        "columnas del CSV. El informe agregado es una "
+        "acción opcional y separada: su contrato envía conteos, porcentajes y métricas resumidas, "
+        "no comentarios individuales ni el archivo CSV. La anonimización reduce la exposición, "
+        "pero nombres propios o contexto libre pueden permanecer y no existe una garantía de "
+        "desidentificación completa."
     )
 
 
@@ -46,38 +53,38 @@ def render_about_overview(*, direct: bool, multilingual: bool, hybrid: bool) -> 
         f"""
         <section class="about-hero">
             <div><span class="about-eyebrow">ANÁLISIS DE OPINIONES DE CLIENTES</span>
-            <h2>Del comentario individual a una visión ordenada del feedback</h2>
-            <p>Sentiment AI organiza comentarios, muestra la distribución de sentimiento
-            y permite revisar términos frecuentes, con trazabilidad sobre cada ruta.</p></div>
-            <aside><strong>Información para revisar</strong><span>Clasificación reproducible,
-            analítica agregada y revisión externa opcional.</span></aside>
+            <h2>Una forma clara de revisar el feedback de clientes</h2>
+            <p>Sentiment AI clasifica comentarios como positivos, neutros o negativos y organiza
+            los resultados para facilitar su revisión, sin presentar las predicciones como certezas.</p></div>
+            <aside><strong>Disponible actualmente</strong><span>Análisis individual y masivo,
+            dashboard, Pareto léxico, informe y revisión externa opcional.</span></aside>
         </section>
         <section class="about-section">
-            <span class="about-eyebrow">CÓMO FUNCIONA</span><h3>Pipeline de procesamiento</h3>
+            <span class="about-eyebrow">QUÉ PUEDE HACER</span><h3>Del comentario al informe</h3>
             <div class="about-pipeline">
-                <article><b>01</b><strong>Ingreso</strong><span>Texto individual o CSV validado</span></article>
-                <i>→</i><article><b>02</b><strong>Protección</strong><span>Detección y anonimización según ruta</span></article>
-                <i>→</i><article><b>03</b><strong>Clasificación</strong><span>TF-IDF + regresión logística local</span></article>
-                <i>→</i><article><b>04</b><strong>Lectura</strong><span>Dashboard, Pareto e informe</span></article>
+                <article><b>01</b><strong>Analizar</strong><span>Un comentario o un archivo CSV validado</span></article>
+                <i>→</i><article><b>02</b><strong>Clasificar</strong><span>Sentimiento y probabilidades del modelo local</span></article>
+                <i>→</i><article><b>03</b><strong>Explorar</strong><span>Distribución, trazabilidad y términos frecuentes</span></article>
+                <i>→</i><article><b>04</b><strong>Comunicar</strong><span>Informe determinístico y exportaciones</span></article>
             </div>
         </section>
         <section class="about-grid">
-            <article><span class="about-card-icon">LOCAL</span><h3>Modelo reproducible</h3>
-            <p>El modelo ternario local conserva sus artefactos, probabilidades y thresholds.
-            Es la base de la experiencia analítica.</p></article>
-            <article><span class="about-card-icon external">OPCIONAL</span><h3>Revisión externa</h3>
-            <p>Las rutas configuradas pueden traducir o revisar casos controlados. Disponibilidad,
-            cuota y límites externos siguen siendo restricciones explícitas.</p></article>
+            <article><span class="about-card-icon">INFORMACIÓN</span><h3>Qué permite revisar</h3>
+            <p>Distribución de sentimientos, probabilidades locales, términos frecuentes en
+            comentarios negativos, trazabilidad de procesamiento y resultados descargables.</p></article>
+            <article><span class="about-card-icon external">ALCANCE</span><h3>Qué no determina</h3>
+            <p>No identifica causas reales, categorías de negocio ni tendencias temporales.
+            El resultado del modelo requiere criterio humano, especialmente fuera de dominio.</p></article>
         </section>
-        <section class="about-privacy"><div>PRIVACIDAD</div><article><h3>El dato sensible conserva su contexto</h3>
+        <section class="about-privacy"><div>DATOS</div><article><h3>Privacidad y tratamiento de datos</h3>
             <p>{privacy}</p></article></section>
         <section class="about-grid about-method">
-            <article><span class="about-eyebrow">METODOLOGÍA Y LÍMITES</span><h3>Qué muestran las vistas</h3>
-            <p>Las métricas resumen las clasificaciones disponibles. Pareto ordena n-gramas
-            frecuentes: no los convierte en categorías semánticas ni afirma causalidad.</p></article>
-            <article><span class="about-eyebrow">PROCEDENCIA</span><h3>Dos etapas, atribución separada</h3>
-            <p>El proyecto original fue un desarrollo grupal de H12-25-L-Equipo-72 de No Country.
-            La recuperación técnica y evolución posterior para portfolio se documentan por separado.</p></article>
+            <article><span class="about-eyebrow">CÓMO SE PROCESA</span><h3>Modelo local y rutas opcionales</h3>
+            <p>La base es un modelo ternario TF-IDF con regresión logística. Según la configuración,
+            traducciones o revisiones externas pueden complementar el resultado con fallback observable.</p></article>
+            <article><span class="about-eyebrow">METODOLOGÍA Y LÍMITES</span><h3>Una lectura, no una explicación causal</h3>
+            <p>Pareto ordena n-gramas frecuentes y las métricas resumen clasificaciones disponibles.
+            El modelo muestra debilidad conocida en neutrales factuales fuera del dominio histórico.</p></article>
         </section>
         <section class="about-team">
             <span class="about-eyebrow">ORIGEN Y EQUIPO</span>
