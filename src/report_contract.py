@@ -3,9 +3,21 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import json
+import re
 from typing import Any
 
 import pandas as pd
+
+
+ASSISTED_READING_SCHEMA_VERSION = "2.0"
+MAX_INTERPRETATIONS = 3
+MAX_HYPOTHESES = 2
+MAX_RECOMMENDATIONS = 3
+
+
+class ReportContractError(ValueError):
+    """A provider response does not satisfy the assisted-reading contract."""
 
 
 @dataclass(frozen=True)
@@ -38,6 +50,84 @@ class ReportFacts:
             "facts": {fact_id: fact.as_payload() for fact_id, fact in self.facts.items()},
             "capabilities": dict(self.capabilities),
         }
+
+
+@dataclass(frozen=True)
+class InterpretationSelection:
+    interpretation_id: str
+    fact_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ReportHypothesis:
+    statement: str
+    fact_refs: tuple[str, ...]
+    validation_needed: str
+
+
+@dataclass(frozen=True)
+class AssistedReading:
+    schema_version: str
+    interpretations: tuple[InterpretationSelection, ...]
+    hypotheses: tuple[ReportHypothesis, ...]
+    recommendation_ids: tuple[str, ...]
+    evidence_needed_ids: tuple[str, ...]
+    insufficient_evidence_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CatalogEntry:
+    text: str
+    fact_refs: tuple[str, ...] = ()
+
+
+INTERPRETATION_CATALOG = {
+    "review_negative_distribution": CatalogEntry(
+        "La distribución observada justifica revisar una muestra de los comentarios clasificados como negativos.",
+        ("sentiment.negative.count", "sentiment.negative.share"),
+    ),
+    "lexical_concentration_for_review": CatalogEntry(
+        "La concentración léxica puede orientar una revisión cualitativa inicial, sin identificar categorías ni causas.",
+        ("lexical.selected_frequency_sum",),
+    ),
+    "confidence_requires_independent_evaluation": CatalogEntry(
+        "La confianza local aporta contexto técnico, pero la calidad del modelo debe evaluarse con etiquetas independientes y métricas por clase.",
+        ("model.mean_local_confidence",),
+    ),
+    "technical_signal_requires_human_review": CatalogEntry(
+        "La señal de negativos de alta confianza sirve para priorizar una revisión técnica, no para medir severidad de negocio.",
+        ("technical.high_confidence_negative.count",),
+    ),
+}
+
+
+RECOMMENDATION_CATALOG = {
+    "review_negative_sample": "Revisar una muestra de comentarios clasificados como negativos y contrastar sus etiquetas con criterio humano.",
+    "inspect_ranked_ngrams": "Examinar los comentarios asociados a los términos frecuentes antes de interpretar su significado.",
+    "validate_lexical_groups_manually": "Validar manualmente si varios términos describen una categoría útil para el negocio.",
+    "investigate_causes_with_evidence": "Investigar posibles causas mediante evidencia adicional antes de definir acciones específicas.",
+    "independent_model_evaluation": "Evaluar el modelo con un conjunto independiente y métricas por clase.",
+    "define_business_objectives": "Definir objetivos, responsables y datos de referencia antes de establecer metas.",
+    "collect_temporal_baseline": "Incorporar períodos comparables antes de interpretar tendencias.",
+}
+
+
+EVIDENCE_NEEDED_CATALOG = {
+    "independent_labeled_evaluation": "Etiquetas humanas independientes para medir desempeño por clase.",
+    "qualitative_comment_review": "Revisión cualitativa de comentarios asociados a las señales observadas.",
+    "semantic_category_validation": "Taxonomía y anotación humana para validar categorías semánticas.",
+    "temporal_baseline": "Períodos comparables para evaluar cambios en el tiempo.",
+    "business_objectives": "Objetivos y línea de base definidos por responsables del negocio.",
+}
+
+
+INSUFFICIENT_EVIDENCE_CATALOG = {
+    "no_negative_comments": "No hay comentarios clasificados como negativos en el lote.",
+    "no_lexical_terms": "No hay términos seleccionados suficientes para una lectura léxica.",
+    "no_semantic_categories": "No se calcularon categorías semánticas verificadas.",
+    "no_time_comparison": "No hay períodos comparables para interpretar tendencias.",
+    "no_business_targets": "No se proporcionaron objetivos ni metas de negocio.",
+}
 
 
 def build_report_facts(metrics: dict[str, object], pareto: pd.DataFrame) -> ReportFacts:
@@ -158,3 +248,176 @@ def build_report_facts(metrics: dict[str, object], pareto: pd.DataFrame) -> Repo
 def fact_value(facts: ReportFacts, fact_id: str) -> Any:
     """Return a fact value and fail loudly for an internal unknown identifier."""
     return facts.facts[fact_id].value
+
+
+def eligible_interpretation_ids(facts: ReportFacts) -> set[str]:
+    eligible = {"confidence_requires_independent_evaluation"}
+    if fact_value(facts, "sentiment.negative.count") > 0:
+        eligible.add("review_negative_distribution")
+    if fact_value(facts, "lexical.selected_frequency_sum") > 0:
+        eligible.add("lexical_concentration_for_review")
+    if fact_value(facts, "technical.high_confidence_negative.count") > 0:
+        eligible.add("technical_signal_requires_human_review")
+    return eligible
+
+
+def eligible_recommendation_ids(facts: ReportFacts) -> set[str]:
+    eligible = {"independent_model_evaluation", "define_business_objectives"}
+    if not facts.capabilities["time_comparison"]:
+        eligible.add("collect_temporal_baseline")
+    if fact_value(facts, "sentiment.negative.count") > 0:
+        eligible.update({"review_negative_sample", "investigate_causes_with_evidence"})
+    if fact_value(facts, "lexical.selected_frequency_sum") > 0:
+        eligible.update({"inspect_ranked_ngrams", "validate_lexical_groups_manually"})
+    return eligible
+
+
+def eligible_insufficient_evidence_ids(facts: ReportFacts) -> set[str]:
+    eligible = set()
+    if fact_value(facts, "sentiment.negative.count") == 0:
+        eligible.add("no_negative_comments")
+    if fact_value(facts, "lexical.selected_frequency_sum") == 0:
+        eligible.add("no_lexical_terms")
+    if not facts.capabilities["semantic_categories"]:
+        eligible.add("no_semantic_categories")
+    if not facts.capabilities["time_comparison"]:
+        eligible.add("no_time_comparison")
+    if not facts.capabilities["business_targets"]:
+        eligible.add("no_business_targets")
+    return eligible
+
+
+def build_assisted_context(facts: ReportFacts) -> dict[str, object]:
+    """Expose facts and only the catalog choices eligible for this batch."""
+    return {
+        "contract": {
+            "schema_version": ASSISTED_READING_SCHEMA_VERSION,
+            "interpretation_ids": sorted(eligible_interpretation_ids(facts)),
+            "recommendation_ids": sorted(eligible_recommendation_ids(facts)),
+            "evidence_needed_ids": sorted(EVIDENCE_NEEDED_CATALOG),
+            "insufficient_evidence_ids": sorted(eligible_insufficient_evidence_ids(facts)),
+            "limits": {
+                "interpretations": MAX_INTERPRETATIONS,
+                "hypotheses": MAX_HYPOTHESES,
+                "recommendations": MAX_RECOMMENDATIONS,
+            },
+        },
+        "evidence": facts.as_ai_payload(),
+    }
+
+
+def parse_assisted_reading(raw: str, facts: ReportFacts) -> AssistedReading:
+    """Parse and validate a provider response without repairing it."""
+    try:
+        data = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ReportContractError("The provider response is not valid JSON.") from exc
+    if not isinstance(data, dict):
+        raise ReportContractError("The provider response must be an object.")
+
+    expected_keys = {
+        "schema_version",
+        "interpretations",
+        "hypotheses",
+        "recommendation_ids",
+        "evidence_needed_ids",
+        "insufficient_evidence_ids",
+    }
+    if set(data) != expected_keys:
+        raise ReportContractError("The provider response has missing or additional fields.")
+    if data["schema_version"] != ASSISTED_READING_SCHEMA_VERSION:
+        raise ReportContractError("Unsupported assisted-reading schema version.")
+
+    interpretations = _parse_interpretations(data["interpretations"], facts)
+    hypotheses = _parse_hypotheses(data["hypotheses"], facts)
+    recommendation_ids = _parse_id_list(
+        data["recommendation_ids"],
+        "recommendation_ids",
+        eligible_recommendation_ids(facts),
+        MAX_RECOMMENDATIONS,
+    )
+    evidence_ids = _parse_id_list(
+        data["evidence_needed_ids"],
+        "evidence_needed_ids",
+        set(EVIDENCE_NEEDED_CATALOG),
+        4,
+    )
+    insufficient_ids = _parse_id_list(
+        data["insufficient_evidence_ids"],
+        "insufficient_evidence_ids",
+        eligible_insufficient_evidence_ids(facts),
+        4,
+    )
+    return AssistedReading(
+        schema_version=ASSISTED_READING_SCHEMA_VERSION,
+        interpretations=interpretations,
+        hypotheses=hypotheses,
+        recommendation_ids=recommendation_ids,
+        evidence_needed_ids=evidence_ids,
+        insufficient_evidence_ids=insufficient_ids,
+    )
+
+
+def _parse_interpretations(value: object, facts: ReportFacts) -> tuple[InterpretationSelection, ...]:
+    if not isinstance(value, list) or len(value) > MAX_INTERPRETATIONS:
+        raise ReportContractError("Invalid interpretations collection.")
+    eligible = eligible_interpretation_ids(facts)
+    parsed = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"interpretation_id", "fact_refs"}:
+            raise ReportContractError("Invalid interpretation fields.")
+        interpretation_id = item["interpretation_id"]
+        if not isinstance(interpretation_id, str) or interpretation_id not in eligible:
+            raise ReportContractError("Unknown or ineligible interpretation.")
+        refs = _parse_fact_refs(item["fact_refs"], facts)
+        allowed_refs = set(INTERPRETATION_CATALOG[interpretation_id].fact_refs)
+        if not refs or not set(refs).issubset(allowed_refs):
+            raise ReportContractError("Interpretation references do not match its catalog entry.")
+        parsed.append(InterpretationSelection(interpretation_id, refs))
+    return tuple(parsed)
+
+
+def _parse_hypotheses(value: object, facts: ReportFacts) -> tuple[ReportHypothesis, ...]:
+    if not isinstance(value, list) or len(value) > MAX_HYPOTHESES:
+        raise ReportContractError("Invalid hypotheses collection.")
+    parsed = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"statement", "fact_refs", "validation_needed"}:
+            raise ReportContractError("Invalid hypothesis fields.")
+        statement = _validate_free_text(item["statement"], "statement", 240)
+        validation = _validate_free_text(item["validation_needed"], "validation_needed", 180)
+        refs = _parse_fact_refs(item["fact_refs"], facts)
+        if not refs:
+            raise ReportContractError("A hypothesis must reference at least one fact.")
+        parsed.append(ReportHypothesis(statement, refs, validation))
+    return tuple(parsed)
+
+
+def _parse_fact_refs(value: object, facts: ReportFacts) -> tuple[str, ...]:
+    if not isinstance(value, list) or len(value) > 4 or not all(isinstance(item, str) for item in value):
+        raise ReportContractError("Invalid fact references.")
+    refs = tuple(dict.fromkeys(value))
+    if any(ref not in facts.facts for ref in refs):
+        raise ReportContractError("A referenced fact does not exist.")
+    return refs
+
+
+def _parse_id_list(
+    value: object, field: str, allowed: set[str], maximum: int
+) -> tuple[str, ...]:
+    if not isinstance(value, list) or len(value) > maximum or not all(isinstance(item, str) for item in value):
+        raise ReportContractError(f"Invalid {field} collection.")
+    result = tuple(dict.fromkeys(value))
+    if any(item not in allowed for item in result):
+        raise ReportContractError(f"Unknown or ineligible value in {field}.")
+    return result
+
+
+def _validate_free_text(value: object, field: str, maximum: int) -> str:
+    if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
+        raise ReportContractError(f"Invalid {field} text.")
+    text = value.strip()
+    forbidden = r"\d|https?://|www\.|[$€£¥]|\b(?:usd|eur|ars|roi)\b|%"
+    if re.search(forbidden, text, flags=re.IGNORECASE):
+        raise ReportContractError(f"Numbers, money, percentages, ROI, and URLs are forbidden in {field}.")
+    return text
