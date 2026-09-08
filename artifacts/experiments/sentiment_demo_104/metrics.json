@@ -1,0 +1,138 @@
+{
+  "case_count": 104,
+  "classes": [
+    "Negativo",
+    "Neutro",
+    "Positivo"
+  ],
+  "accuracy": 0.75,
+  "macro_f1": 0.5197798417612659,
+  "weighted_f1": 0.714346669842026,
+  "per_class": {
+    "Negativo": {
+      "precision": 0.8354430379746836,
+      "recall": 0.8918918918918919,
+      "f1": 0.8627450980392157,
+      "support": 74
+    },
+    "Neutro": {
+      "precision": 0.5,
+      "recall": 0.06666666666666667,
+      "f1": 0.11764705882352941,
+      "support": 15
+    },
+    "Positivo": {
+      "precision": 0.4782608695652174,
+      "recall": 0.7333333333333333,
+      "f1": 0.5789473684210527,
+      "support": 15
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "Negativo",
+      "Neutro",
+      "Positivo"
+    ],
+    "values": [
+      [
+        66,
+        0,
+        8
+      ],
+      [
+        10,
+        1,
+        4
+      ],
+      [
+        3,
+        1,
+        11
+      ]
+    ]
+  },
+  "distribution": {
+    "expected": {
+      "Negativo": 74,
+      "Neutro": 15,
+      "Positivo": 15
+    },
+    "predicted": {
+      "Negativo": 79,
+      "Neutro": 2,
+      "Positivo": 23
+    }
+  },
+  "errors": {
+    "count": 26,
+    "by_flow": [
+      {
+        "expected": "Neutro",
+        "predicted": "Negativo",
+        "count": 10
+      },
+      {
+        "expected": "Negativo",
+        "predicted": "Positivo",
+        "count": 8
+      },
+      {
+        "expected": "Neutro",
+        "predicted": "Positivo",
+        "count": 4
+      },
+      {
+        "expected": "Positivo",
+        "predicted": "Negativo",
+        "count": 3
+      },
+      {
+        "expected": "Positivo",
+        "predicted": "Neutro",
+        "count": 1
+      }
+    ],
+    "high_confidence_threshold": 0.8,
+    "high_confidence_count": 1
+  },
+  "confidence": {
+    "correct_mean": 0.692271295574128,
+    "correct_median": 0.6615101256762776,
+    "error_mean": 0.5667258051839785,
+    "error_median": 0.5601278531537301
+  },
+  "factual_neutral": {
+    "definition": "All rows whose reference label is Neutro in this synthetic dataset.",
+    "count": 15,
+    "correct": 1,
+    "accuracy": 0.06666666666666667,
+    "predicted_distribution": {
+      "Negativo": 10,
+      "Neutro": 1,
+      "Positivo": 4
+    }
+  },
+  "negation": {
+    "definition": "Regex lexical audit: \\b(?:no|nunca|nadie|sin|tampoco|ni|jam[aá]s)\\b",
+    "count": 42,
+    "correct": 41,
+    "accuracy": 0.9761904761904762,
+    "errors": 1
+  },
+  "evaluation": {
+    "source": "artifacts\\experiments\\sentiment_ai_demo_pareto_104.csv",
+    "source_sha256": "16610c4e3aaa601c09fbf32e47baaceef7f39b3eff75f5bac8fe0b2a7356a206",
+    "model_input_columns": [
+      "comentario"
+    ],
+    "reference_columns": [
+      "expected_sentiment"
+    ],
+    "excluded_columns": [
+      "tema_esperado",
+      "dataset_type"
+    ],
+    "high_confidence_threshold_reporting_only": 0.8
+  }
+}

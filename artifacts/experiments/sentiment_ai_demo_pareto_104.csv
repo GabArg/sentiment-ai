@@ -1,0 +1,105 @@
+﻿case_id,comentario,expected_sentiment,tema_esperado,dataset_type
+DEMO-001,Recibí el color equivocado y no era el producto que elegí.,Negativo,Pedido incorrecto o incompleto,synthetic
+DEMO-002,El paquete llegó golpeado y el contenido estaba completamente dañado.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-003,El pedido estuvo detenido varios días y nadie informó el motivo.,Negativo,Demoras en la entrega,synthetic
+DEMO-004,El producto llegó tarde y ya no lo necesitaba para el evento.,Negativo,Demoras en la entrega,synthetic
+DEMO-005,El producto tiene una garantía de doce meses.,Neutro,,synthetic
+DEMO-006,"Devolví el producto defectuoso, pero sigo esperando que me devuelvan el dinero.",Negativo,Devoluciones y reembolsos,synthetic
+DEMO-007,La entrega demoró demasiado y tuve que cancelar mis planes.,Negativo,Demoras en la entrega,synthetic
+DEMO-008,No puedo ingresar a mi cuenta porque la aplicación no funciona correctamente.,Negativo,Experiencia web y pago,synthetic
+DEMO-009,El producto corresponde al modelo publicado en el catálogo.,Neutro,,synthetic
+DEMO-010,El modelo corresponde a la versión publicada este año.,Neutro,,synthetic
+DEMO-011,La entrega fue rápida y el paquete llegó bien protegido.,Positivo,,synthetic
+DEMO-012,El producto tiene muy buena calidad y funciona perfectamente.,Positivo,,synthetic
+DEMO-013,El envío tardó mucho más de lo informado al comprar.,Negativo,Demoras en la entrega,synthetic
+DEMO-014,"La calidad es terrible, el producto se rompió después de dos días.",Negativo,Producto dañado o defectuoso,synthetic
+DEMO-015,El pedido contiene artículos que no solicité y faltan los míos.,Negativo,Pedido incorrecto o incompleto,synthetic
+DEMO-016,Faltan unidades en el paquete y nadie responde por el error.,Negativo,Pedido incorrecto o incompleto,synthetic
+DEMO-017,La factura incluye productos que nunca compré.,Negativo,Facturación y cobros,synthetic
+DEMO-018,El proceso de devolución es complicado y nadie explica cómo continuar.,Negativo,Devoluciones y reembolsos,synthetic
+DEMO-019,Mi reclamo sigue abierto y nadie me informa qué está pasando.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-020,El equipo de soporte no pudo resolver un problema sencillo.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-021,Me entregaron otro modelo y necesito que lo cambien.,Negativo,Pedido incorrecto o incompleto,synthetic
+DEMO-022,No respetaron la política de reembolso que figuraba en la página.,Negativo,Devoluciones y reembolsos,synthetic
+DEMO-023,El sitio web es muy lento y muestra errores al pagar.,Negativo,Experiencia web y pago,synthetic
+DEMO-024,Nadie respondió mis correos y tuve que insistir durante varios días.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-025,La devolución tardó demasiado y tuve que reclamar varias veces.,Negativo,Devoluciones y reembolsos,synthetic
+DEMO-026,La entrega se reprogramó varias veces sin ninguna explicación.,Negativo,Demoras en la entrega,synthetic
+DEMO-027,La atención al cliente fue pésima y no resolvieron mi problema.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-028,Me enviaron un producto diferente al que había comprado.,Negativo,Pedido incorrecto o incompleto,synthetic
+DEMO-029,El servicio de atención prometió llamarme y nunca lo hizo.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-030,El producto funciona de maravilla y estoy muy contento.,Positivo,,synthetic
+DEMO-031,La caja llegó aplastada y el producto tenía varias piezas dañadas.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-032,Recibí un artículo usado y defectuoso cuando había comprado uno nuevo.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-033,"Me encantó la experiencia de compra, todo fue sencillo y claro.",Positivo,,synthetic
+DEMO-034,El número de pedido aparece en el correo de confirmación.,Neutro,,synthetic
+DEMO-035,El precio final fue mayor al publicado y me siento engañado.,Negativo,Facturación y cobros,synthetic
+DEMO-036,El trámite de devolución fue frustrante y no recibí ninguna solución.,Negativo,Devoluciones y reembolsos,synthetic
+DEMO-037,El material es de mala calidad y se rompió con el primer uso.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-038,Me aplicaron un cargo adicional que nunca fue informado.,Negativo,Facturación y cobros,synthetic
+DEMO-039,Me cobraron dos veces la misma compra y todavía no recibí el reintegro.,Negativo,Facturación y cobros,synthetic
+DEMO-040,El servicio de atención funciona de lunes a viernes.,Neutro,,synthetic
+DEMO-041,Solicité la devolución hace dos semanas y todavía no me reintegraron el dinero.,Negativo,Devoluciones y reembolsos,synthetic
+DEMO-042,Recomiendo esta tienda por su atención y excelente servicio.,Positivo,,synthetic
+DEMO-043,La fecha prometida no se cumplió y el pedido llegó muy tarde.,Negativo,Demoras en la entrega,synthetic
+DEMO-044,Recibí un artículo defectuoso que dejó de funcionar al primer uso.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-045,El servicio de atención no responde y sigo sin poder resolver el inconveniente.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-046,El producto llegó con la pantalla rota y no puedo utilizarlo.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-047,Me enviaron un artículo con piezas faltantes y componentes dañados.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-048,El producto tardó una semana extra en llegar y no recibí explicaciones.,Negativo,Demoras en la entrega,synthetic
+DEMO-049,El personal fue amable y me ayudó durante todo el proceso.,Positivo,,synthetic
+DEMO-050,La demora en la entrega fue inaceptable para un servicio tan caro.,Negativo,Demoras en la entrega,synthetic
+DEMO-051,El personal fue descortés y no mostró interés en ayudarme.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-052,El pedido llegó con mucho retraso y perdí tiempo esperando.,Negativo,Demoras en la entrega,synthetic
+DEMO-053,La respuesta del soporte fue confusa y no solucionó el problema.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-054,La devolución se resolvió rápidamente y recibí el reintegro sin problemas.,Positivo,,synthetic
+DEMO-055,El dispositivo llegó con un defecto que impide su funcionamiento.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-056,"Me prometieron entrega al día siguiente, pero llegó una semana después.",Negativo,Demoras en la entrega,synthetic
+DEMO-057,Me descontaron dinero por un pedido cancelado y no lo devolvieron.,Negativo,Facturación y cobros,synthetic
+DEMO-058,La entrega llegó después de la fecha límite que necesitaba.,Negativo,Demoras en la entrega,synthetic
+DEMO-059,El equipo no enciende y parece tener una falla de fábrica.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-060,Me prometieron devolver el dinero y todavía no recibí nada.,Negativo,Devoluciones y reembolsos,synthetic
+DEMO-061,El precio fue conveniente y el producto superó mis expectativas.,Positivo,,synthetic
+DEMO-062,Me dejaron esperando en el chat durante horas sin darme una solución.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-063,Esperé todo el día y el repartidor nunca llegó.,Negativo,Demoras en la entrega,synthetic
+DEMO-064,El importe de la factura es incorrecto y nadie corrige el error.,Negativo,Facturación y cobros,synthetic
+DEMO-065,El pago se registró mediante tarjeta de crédito.,Neutro,,synthetic
+DEMO-066,El artículo está disponible en tres colores.,Neutro,,synthetic
+DEMO-067,El sistema de pago falla y no puedo completar el pedido.,Negativo,Experiencia web y pago,synthetic
+DEMO-068,Recibí exactamente lo que pedí y el servicio fue excelente.,Positivo,,synthetic
+DEMO-069,"Me cobraron envío rápido, pero la entrega llegó tarde.",Negativo,Demoras en la entrega,synthetic
+DEMO-070,La atención fue excelente y resolvieron mi consulta rápidamente.,Positivo,,synthetic
+DEMO-071,El producto presenta fallas constantes y necesito una solución.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-072,El pedido fue realizado el lunes y figura como recibido.,Neutro,,synthetic
+DEMO-073,Escribí al soporte varias veces y nadie respondió mi reclamo.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-074,El pedido llegó tres días tarde y nadie me avisó del retraso.,Negativo,Demoras en la entrega,synthetic
+DEMO-075,El pedido se encuentra en preparación según el sistema.,Neutro,,synthetic
+DEMO-076,Rechazaron mi solicitud de reembolso sin darme una razón clara.,Negativo,Devoluciones y reembolsos,synthetic
+DEMO-077,La factura fue emitida con fecha del mes actual.,Neutro,,synthetic
+DEMO-078,El cobro duplicado sigue sin resolverse después de varios reclamos.,Negativo,Facturación y cobros,synthetic
+DEMO-079,El paquete contiene las instrucciones y la garantía.,Neutro,,synthetic
+DEMO-080,Llamé tres veces y cada agente me dio una respuesta diferente.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-081,La aplicación se cierra constantemente y perdí mi carrito de compras.,Negativo,Experiencia web y pago,synthetic
+DEMO-082,La calidad del producto es muy buena y la entrega fue puntual.,Positivo,,synthetic
+DEMO-083,Estoy muy satisfecho con la compra y volvería a comprar.,Positivo,,synthetic
+DEMO-084,El pedido llegó incompleto y faltaban dos artículos.,Negativo,Pedido incorrecto o incompleto,synthetic
+DEMO-085,Me trataron mal cuando intenté reclamar por el producto.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-086,El soporte cerró mi reclamo sin haber solucionado nada.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-087,La compra incluye dos unidades y un accesorio adicional.,Neutro,,synthetic
+DEMO-088,El paquete pesa dos kilogramos según la etiqueta.,Neutro,,synthetic
+DEMO-089,El envío llegó tarde por segunda vez y estoy muy decepcionado.,Negativo,Demoras en la entrega,synthetic
+DEMO-090,Me cobraron un servicio que no solicité y quiero el reembolso.,Negativo,Facturación y cobros,synthetic
+DEMO-091,El pedido llegó antes de lo esperado y en perfecto estado.,Positivo,,synthetic
+DEMO-092,Estoy cansado de las demoras constantes en las entregas.,Negativo,Demoras en la entrega,synthetic
+DEMO-093,La página se bloquea cada vez que intento finalizar la compra.,Negativo,Experiencia web y pago,synthetic
+DEMO-094,El sitio web es fácil de usar y pude comprar sin inconvenientes.,Positivo,,synthetic
+DEMO-095,Tuve que reclamar varias veces por el retraso de mi paquete.,Negativo,Demoras en la entrega,synthetic
+DEMO-096,La compra fue realizada desde la aplicación móvil.,Neutro,,synthetic
+DEMO-097,El retraso del envío arruinó mi experiencia de compra.,Negativo,Demoras en la entrega,synthetic
+DEMO-098,La atención fue muy lenta y no recibí ninguna respuesta útil.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-099,Tuve que explicar el mismo inconveniente a cinco personas distintas.,Negativo,Atención y falta de respuesta,synthetic
+DEMO-100,El producto llegó roto y el embalaje estaba en mal estado.,Negativo,Producto dañado o defectuoso,synthetic
+DEMO-101,La entrega está programada para el próximo jueves.,Neutro,,synthetic
+DEMO-102,El paquete sigue sin llegar y la fecha de entrega ya pasó.,Negativo,Demoras en la entrega,synthetic
+DEMO-103,El servicio de entrega fue lento y poco confiable.,Negativo,Demoras en la entrega,synthetic
+DEMO-104,El soporte solucionó mi problema de manera rápida y profesional.,Positivo,,synthetic

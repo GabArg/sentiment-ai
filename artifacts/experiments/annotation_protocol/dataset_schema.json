@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sentiment-ai/annotation-dataset/sentiment-v1.0.0",
+  "title": "Sentiment AI human annotation master dataset",
+  "type": "object",
+  "taxonomy_version": "sentiment-v1.0.0",
+  "csv_columns": [
+    "case_id",
+    "texto_original_anonimizado",
+    "source_id",
+    "family_id",
+    "source_type",
+    "language",
+    "annotation_status",
+    "annotator_1_label",
+    "annotator_2_label",
+    "adjudicated_label",
+    "disagreement_reason",
+    "adjudication_notes",
+    "sentiment_subgroup",
+    "created_at",
+    "taxonomy_version",
+    "split"
+  ],
+  "label_values": ["Negativo", "Neutro", "Positivo", "No evaluable", "Ambiguo"],
+  "final_label_values": ["Negativo", "Neutro", "Positivo", "No evaluable"],
+  "source_type_values": ["authorized_feedback", "public_dataset", "synthetic"],
+  "annotation_status_values": ["pending", "annotated", "disagreement", "adjudicated", "excluded"],
+  "split_values": ["unassigned", "development", "final", "training_only", "excluded"],
+  "language_pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$",
+  "id_patterns": {
+    "case_id": "^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$",
+    "source_id": "^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$",
+    "family_id": "^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$"
+  },
+  "sentiment_subgroup_values": [
+    "factual", "explicit_opinion", "weak_opinion", "mixed", "simple_negation",
+    "polarity_inverting_negation", "double_negation", "contrast", "sarcasm",
+    "short", "multi_sentence", "resolved_problem", "praise_with_problem",
+    "out_of_domain", "other"
+  ],
+  "prohibited_columns": [
+    "prediction", "predicted_sentiment", "model_prediction", "confidence",
+    "local_confidence", "probability_negativo", "probability_neutro",
+    "probability_positivo", "expected_sentiment"
+  ],
+  "constraints": {
+    "case_id_unique": true,
+    "anonymized_text_required": true,
+    "created_at_format": "ISO-8601 UTC ending in Z",
+    "one_split_per_family": true,
+    "predictions_forbidden": true,
+    "final_requires_adjudicated_status": true,
+    "ambiguous_cannot_be_final_label": true
+  }
+}

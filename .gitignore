@@ -2,6 +2,8 @@
 .venv/
 venv/
 __pycache__/
+artifacts/experiments/sentiment_demo_104/predictions.csv
+artifacts/experiments/neutrality_research/experiment_predictions.csv
 *.py[cod]
 .pytest_cache/
 .coverage
