@@ -6,6 +6,9 @@ import html
 
 import streamlit as st
 
+from src.report_contract import AssistedReading
+from src.reporting import generate_assisted_markdown
+
 from .html import render_html
 
 
@@ -113,7 +116,7 @@ def render_ai_report_intro(
             <div class="report-ai-heading">
                 <span>Informe IA opcional</span>
                 <h3>Análisis agregado con Cerebras</h3>
-                <p>Funcionalidad separada. La llamada ocurre sólo al pulsar el botón y nunca recibe el CSV completo ni comentarios individuales.</p>
+                <p>Funcionalidad separada. La llamada ocurre sólo al pulsar el botón, recibe hechos agregados sin etiquetas textuales de términos y nunca recibe el CSV completo ni comentarios individuales. Las cifras permanecen bajo control local.</p>
             </div>
             <div class="report-ai-meta">
                 <div><span>Modelo</span><strong>{html.escape(model)}</strong></div>
@@ -123,3 +126,17 @@ def render_ai_report_intro(
         </section>
         """
     )
+
+
+def render_assisted_reading(reading: AssistedReading) -> None:
+    """Render validated assisted content as a clearly separate layer."""
+    with st.container(border=True):
+        render_html(
+            """
+            <div class="report-section-heading summary">
+                <span>Complemento opcional</span>
+                <h3>Lectura asistida</h3>
+            </div>
+            """
+        )
+        st.markdown(generate_assisted_markdown(reading))

@@ -47,6 +47,7 @@ from .individual import (
 )
 from .report_view import (
     parse_report_sections,
+    render_assisted_reading,
     render_ai_report_intro,
     render_deterministic_brief,
 )
@@ -78,6 +79,7 @@ __all__ = [
     "render_batch_stepper",
     "render_attention_panel",
     "render_ai_report_intro",
+    "render_assisted_reading",
     "render_about_overview",
     "render_confidence_context_chart",
     "render_dashboard_kpis",

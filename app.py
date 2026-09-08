@@ -33,7 +33,13 @@ from src.multilingual_config import MultilingualConfig, load_multilingual_config
 from src.multilingual_pipeline import evaluate_multilingual_sentiment
 from src.pareto import calculate_pareto, extract_negative_topics
 from src.preprocessing import CSVValidationError, read_csv_upload
+from src.report_contract import (
+    ASSISTED_READING_SCHEMA_VERSION,
+    AssistedReading,
+    build_report_facts,
+)
 from src.reporting import (
+    compose_report_document,
     estimate_payload,
     generate_deterministic_report,
     prepare_ai_context,
@@ -59,6 +65,7 @@ from src.ui import (
     render_batch_stepper,
     render_attention_panel,
     render_ai_report_intro,
+    render_assisted_reading,
     render_confidence_context_chart,
     render_dashboard_kpis,
     render_dataset_reading,
@@ -85,6 +92,7 @@ from src.ui import (
 
 
 MAX_TEXT_LENGTH = 5_000
+ASSISTED_REPORT_STATE_KEY = "assisted_report_v2"
 REVIEW_STATE_LABELS = {
     "local_only": "Modelo local",
     "reviewed": "Validado por second check",
@@ -141,6 +149,27 @@ def batch_source_id(payload: bytes, column: str) -> str:
     """Identify an uploaded source and selected column without retaining file bytes."""
     digest = sha256(payload).hexdigest()
     return f"{digest}:{column}"
+
+
+def clear_report_session_state() -> None:
+    """Invalidate current and pre-structured report state."""
+    for key in ("ai_report", "ai_report_used_ai", ASSISTED_REPORT_STATE_KEY):
+        st.session_state.pop(key, None)
+
+
+def get_assisted_report_state():
+    """Return only state produced by the current structured contract."""
+    st.session_state.pop("ai_report", None)
+    st.session_state.pop("ai_report_used_ai", None)
+    state = st.session_state.get(ASSISTED_REPORT_STATE_KEY)
+    if not isinstance(state, dict) or state.get("version") != ASSISTED_READING_SCHEMA_VERSION:
+        st.session_state.pop(ASSISTED_REPORT_STATE_KEY, None)
+        return None
+    reading = state.get("reading")
+    if not isinstance(reading, AssistedReading):
+        st.session_state.pop(ASSISTED_REPORT_STATE_KEY, None)
+        return None
+    return reading
 
 
 def store_batch_results(
@@ -321,7 +350,7 @@ def render_batch() -> None:
                 filename=getattr(uploaded, "name", None),
                 column=column,
             )
-            st.session_state.pop("ai_report", None)
+            clear_report_session_state()
             render_batch_summary_band(len(results), dropped)
         except (CSVValidationError, ValueError) as exc:
             st.error(str(exc))
@@ -625,7 +654,7 @@ def render_batch_controlled() -> None:
                 "hybrid"
             )
             st.session_state.pop("hybrid_summary", None)
-            st.session_state.pop("ai_report", None)
+            clear_report_session_state()
             render_batch_summary_band(len(results), dropped)
             if direct_config.enabled:
                 st.info(f"Llamadas externas consumidas: {summary['external_calls_used']:,} de {summary['external_call_limit']:,}; revisiones directas {summary['direct_reviews_attempted']:,}.")
@@ -746,6 +775,7 @@ def render_report() -> None:
         render_workspace_empty_state(str(exc))
         return
     deterministic = generate_deterministic_report(metrics, pareto)
+    facts = build_report_facts(metrics, pareto)
     render_deterministic_brief(deterministic)
     st.download_button(
         "Descargar informe determinístico",
@@ -769,27 +799,31 @@ def render_report() -> None:
         st.info("CEREBRAS_API_KEY no está configurada. El informe determinístico permanece disponible.")
     if st.button("Generar informe con IA", disabled=not bool(key), type="primary", width="stretch"):
         with st.spinner("Generando informe agregado con Cerebras…"):
-            report, used_ai, error = generate_report_with_fallback(
-                deterministic,
+            reading, used_ai, error = generate_report_with_fallback(
                 context,
+                facts,
                 api_key=key,
             )
-        st.session_state["ai_report"] = report
-        st.session_state["ai_report_used_ai"] = used_ai
+        if reading is not None and used_ai:
+            st.session_state[ASSISTED_REPORT_STATE_KEY] = {
+                "version": ASSISTED_READING_SCHEMA_VERSION,
+                "reading": reading,
+            }
+        else:
+            st.session_state.pop(ASSISTED_REPORT_STATE_KEY, None)
         if error:
-            st.warning("Cerebras no respondió correctamente. Se muestra el informe ejecutivo generado sin IA.")
-    if "ai_report" in st.session_state:
-        label = "Informe generado con IA" if st.session_state.get("ai_report_used_ai") else "Informe ejecutivo generado sin IA"
-        with st.container(border=True):
-            render_panel_heading("Resultado opcional", label)
-            st.markdown(st.session_state["ai_report"])
-            st.download_button(
-                "Descargar informe mostrado",
-                data=st.session_state["ai_report"].encode("utf-8"),
-                file_name="ai_business_insights.md",
-                mime="text/markdown",
-                width="stretch",
-            )
+            st.warning("La lectura asistida no estuvo disponible. El informe calculado permanece visible y descargable.")
+    reading = get_assisted_report_state()
+    if reading is not None:
+        render_assisted_reading(reading)
+        composed = compose_report_document(deterministic, reading)
+        st.download_button(
+            "Descargar informe compuesto",
+            data=composed.encode("utf-8"),
+            file_name="sentiment_ai_report.md",
+            mime="text/markdown",
+            width="stretch",
+        )
 
 
 def render_about() -> None:
