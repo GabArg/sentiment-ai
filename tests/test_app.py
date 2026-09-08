@@ -348,11 +348,109 @@ def test_direct_short_text_and_fallback_labels(monkeypatch):
 
 
 class _UploadedCsv:
-    def __init__(self, payload: bytes):
+    def __init__(self, payload: bytes, name: str = "feedback.csv"):
         self.payload = payload
+        self.name = name
 
     def getvalue(self):
         return self.payload
+
+
+def _fake_local_batch(frame, column, _predictor):
+    labels = ["Negativo", "Negativo", "Positivo", "Neutro"]
+    return (
+        pd.DataFrame(
+            {
+                "text": frame[column].astype(str).tolist(),
+                "sentiment": [labels[index % len(labels)] for index in range(len(frame))],
+                "confidence": [0.8] * len(frame),
+            }
+        ),
+        0,
+    )
+
+
+def test_batch_results_and_download_survive_full_navigation(monkeypatch):
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW", "false")
+    payload = (
+        "comentario,canal\n"
+        "entrega tarde,web\n"
+        "entrega tarde otra vez,web\n"
+        "excelente,tienda\n"
+        "recibido,tienda\n"
+    ).encode()
+    upload_calls = 0
+    analysis_calls = 0
+
+    def transient_upload(*_args, **_kwargs):
+        nonlocal upload_calls
+        upload_calls += 1
+        return _UploadedCsv(payload) if upload_calls <= 2 else None
+
+    def analyze_once(frame, column, predictor):
+        nonlocal analysis_calls
+        analysis_calls += 1
+        return _fake_local_batch(frame, column, predictor)
+
+    monkeypatch.setattr(st, "file_uploader", transient_upload)
+    monkeypatch.setattr("src.batch.analyze_dataframe", analyze_once)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.radio[0].set_value(app.radio[0].options[1]).run()
+    app.button[0].click().run()
+
+    expected = app.session_state["batch_results"].copy()
+    download_url = app.get("download_button")[0].proto.url
+    assert analysis_calls == 1
+
+    for page in ("Dashboard", "Pareto 80/20", "Informe ejecutivo", "Acerca del proyecto"):
+        app.radio[0].set_value(page).run()
+        assert not app.exception
+
+    app.radio[0].set_value(app.radio[0].options[1]).run()
+    assert not app.exception
+    pd.testing.assert_frame_equal(app.session_state["batch_results"], expected)
+    assert len(app.dataframe) == 1
+    assert app.get("download_button")[0].proto.url == download_url
+    assert any("Resultados conservados durante esta" in item.value for item in app.caption)
+    assert analysis_calls == 1
+
+
+def test_new_batch_source_hides_old_results_until_processed(monkeypatch):
+    monkeypatch.setenv("ENABLE_HYBRID_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_MULTILINGUAL_SENTIMENT", "false")
+    monkeypatch.setenv("ENABLE_DIRECT_MULTILINGUAL_REVIEW", "false")
+    current = {
+        "upload": _UploadedCsv("comentario,canal\nlote anterior,web\n".encode(), "anterior.csv")
+    }
+    analysis_calls = 0
+
+    def analyze(frame, column, predictor):
+        nonlocal analysis_calls
+        analysis_calls += 1
+        return _fake_local_batch(frame, column, predictor)
+
+    monkeypatch.setattr(st, "file_uploader", lambda *_args, **_kwargs: current["upload"])
+    monkeypatch.setattr("src.batch.analyze_dataframe", analyze)
+    app = AppTest.from_file("../app.py", default_timeout=20).run()
+    app.radio[0].set_value(app.radio[0].options[1]).run()
+    app.button[0].click().run()
+    previous_source = app.session_state["batch_source_id"]
+    assert analysis_calls == 1
+
+    current["upload"] = _UploadedCsv("comentario,canal\nlote nuevo,tienda\n".encode(), "nuevo.csv")
+    app.run()
+    assert not app.exception
+    assert len(app.get("download_button")) == 0
+    assert any("distintos del lote activo" in item.value for item in app.info)
+    assert analysis_calls == 1
+
+    app.button[0].click().run()
+    assert analysis_calls == 2
+    assert app.session_state["batch_source_id"] != previous_source
+    assert app.session_state["batch_results"]["text"].tolist() == ["lote nuevo"]
+    assert len(app.get("download_button")) == 1
 
 
 def _run_direct_batch(monkeypatch, review_result):

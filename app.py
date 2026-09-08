@@ -7,6 +7,7 @@ See ATTRIBUTION.md and LICENSE (GPL-3.0).
 from __future__ import annotations
 
 import os
+from hashlib import sha256
 
 import pandas as pd
 import streamlit as st
@@ -136,6 +137,73 @@ def get_batch_results() -> pd.DataFrame | None:
     return value if isinstance(value, pd.DataFrame) and not value.empty else None
 
 
+def batch_source_id(payload: bytes, column: str) -> str:
+    """Identify an uploaded source and selected column without retaining file bytes."""
+    digest = sha256(payload).hexdigest()
+    return f"{digest}:{column}"
+
+
+def store_batch_results(
+    results: pd.DataFrame,
+    *,
+    source_id: str,
+    filename: str | None,
+    column: str,
+) -> None:
+    """Persist analyzed results and non-sensitive source context for this session."""
+    st.session_state["batch_results"] = results
+    st.session_state["batch_source_id"] = source_id
+    st.session_state["batch_source_name"] = filename or "Archivo CSV"
+    st.session_state["batch_source_column"] = column
+
+
+def render_saved_batch_context() -> None:
+    """Explain why results remain available after transient widgets disappear."""
+    filename = st.session_state.get("batch_source_name")
+    column = st.session_state.get("batch_source_column")
+    detail = " · ".join(str(value) for value in (filename, column) if value)
+    message = "Resultados conservados durante esta sesión"
+    st.caption(f"{message} · {detail}" if detail else message)
+
+
+def render_batch_results_view(results: pd.DataFrame, *, controlled: bool) -> None:
+    """Render stored batch output independently from uploader widget state."""
+    metrics = calculate_metrics(results)
+    if controlled:
+        display, column_config = prepare_batch_display(
+            results,
+            review_labels=REVIEW_STATE_LABELS,
+            translation_labels=TRANSLATION_STATE_LABELS,
+            direct_labels=DIRECT_REVIEW_STATE_LABELS,
+            error_labels=EXTERNAL_ERROR_LABELS,
+        )
+    else:
+        display, column_config = prepare_batch_display(results)
+    heading, action = st.columns([4, 1], gap="medium", vertical_alignment="bottom")
+    with heading:
+        render_batch_results_header()
+    with action:
+        st.download_button(
+            "Descargar CSV procesado",
+            data=results.to_csv(index=False).encode("utf-8-sig"),
+            file_name="sentiment_analysis_results.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+    render_batch_kpi_cards(metrics)
+    st.dataframe(
+        display.head(100),
+        width="stretch",
+        hide_index=True,
+        column_config=column_config,
+    )
+    if controlled:
+        summary = st.session_state.get("batch_summary")
+        summary_kind = st.session_state.get("batch_summary_kind")
+        if isinstance(summary, dict) and isinstance(summary_kind, str):
+            render_batch_traceability(results, summary, summary_kind)
+
+
 def get_analysis() -> tuple[pd.DataFrame, dict[str, object], pd.DataFrame]:
     results = get_batch_results()
     if results is None:
@@ -212,15 +280,21 @@ def render_individual() -> None:
 def render_batch() -> None:
     st.markdown("Subí un CSV, elegí la columna de comentarios y ejecutá inferencia vectorizada.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
-    render_batch_stepper(has_file=uploaded is not None, has_results=get_batch_results() is not None)
+    stored_results = get_batch_results()
+    render_batch_stepper(has_file=uploaded is not None, has_results=stored_results is not None)
     if uploaded is None:
-        render_batch_upload_empty(
-            "El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras."
-        )
-        st.info("El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras.")
+        if stored_results is not None:
+            render_saved_batch_context()
+            render_batch_results_view(stored_results, controlled=False)
+        else:
+            render_batch_upload_empty(
+                "El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras."
+            )
+            st.info("El archivo se procesa localmente en la sesión de Streamlit y no se envía a Cerebras.")
         return
+    payload = uploaded.getvalue()
     try:
-        frame = read_csv_upload(uploaded.getvalue())
+        frame = read_csv_upload(payload)
     except CSVValidationError as exc:
         st.error(str(exc))
         return
@@ -230,6 +304,7 @@ def render_batch() -> None:
         st.error("El CSV no contiene una columna disponible para analizar comentarios.")
         return
     column = st.selectbox("Columna que contiene el comentario", options=text_columns)
+    current_source_id = batch_source_id(payload, column)
     st.dataframe(
         frame.head(20),
         width="stretch",
@@ -240,7 +315,12 @@ def render_batch() -> None:
         try:
             with st.spinner("Vectorizando y clasificando el lote…"):
                 results, dropped = analyze_dataframe(frame, column, get_predictor())
-            st.session_state["batch_results"] = results
+            store_batch_results(
+                results,
+                source_id=current_source_id,
+                filename=getattr(uploaded, "name", None),
+                column=column,
+            )
             st.session_state.pop("ai_report", None)
             render_batch_summary_band(len(results), dropped)
         except (CSVValidationError, ValueError) as exc:
@@ -248,27 +328,10 @@ def render_batch() -> None:
         except Exception:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
-    if results is not None:
-        metrics = calculate_metrics(results)
-        display, column_config = prepare_batch_display(results)
-        heading, action = st.columns([4, 1], gap="medium", vertical_alignment="bottom")
-        with heading:
-            render_batch_results_header()
-        with action:
-            st.download_button(
-                "Descargar CSV procesado",
-                data=results.to_csv(index=False).encode("utf-8-sig"),
-                file_name="sentiment_analysis_results.csv",
-                mime="text/csv",
-                width="stretch",
-            )
-        render_batch_kpi_cards(metrics)
-        st.dataframe(
-            display.head(100),
-            width="stretch",
-            hide_index=True,
-            column_config=column_config,
-        )
+    if results is not None and st.session_state.get("batch_source_id") == current_source_id:
+        render_batch_results_view(results, controlled=False)
+    elif results is not None:
+        st.info("El archivo o la columna seleccionados son distintos del lote activo. Procesalos para reemplazar los resultados de la sesión.")
 
 
 def render_individual_controlled() -> None:
@@ -445,7 +508,8 @@ def render_batch_controlled() -> None:
     else:
         st.markdown("La clasificación local ocurre primero; sólo los casos derivados reciben un second check controlado.")
     uploaded = st.file_uploader("Archivo CSV", type=["csv"], help="Máximo 10 MB y 10.000 filas.")
-    render_batch_stepper(has_file=uploaded is not None, has_results=get_batch_results() is not None)
+    stored_results = get_batch_results()
+    render_batch_stepper(has_file=uploaded is not None, has_results=stored_results is not None)
     if uploaded is None:
         if direct_config.enabled:
             privacy_msg = "Sólo se envía el comentario anonimizado para las revisiones directas; no se envían otras columnas del CSV."
@@ -453,11 +517,16 @@ def render_batch_controlled() -> None:
             privacy_msg = "Los textos que requieren traducción se anonimizan antes de enviarse a Cerebras. Sólo se envía el comentario anonimizado, sin otras columnas; el original queda preservado en la app."
         else:
             privacy_msg = "Sólo comentarios derivados pueden enviarse a Cerebras tras anonimizar emails, teléfonos, URLs e IDs largos. No se envían otras columnas del CSV."
-        render_batch_upload_empty(privacy_msg)
-        st.info(privacy_msg)
+        if stored_results is not None:
+            render_saved_batch_context()
+            render_batch_results_view(stored_results, controlled=True)
+        else:
+            render_batch_upload_empty(privacy_msg)
+            st.info(privacy_msg)
         return
+    payload = uploaded.getvalue()
     try:
-        frame = read_csv_upload(uploaded.getvalue())
+        frame = read_csv_upload(payload)
     except CSVValidationError as exc:
         st.error(str(exc))
         return
@@ -467,6 +536,7 @@ def render_batch_controlled() -> None:
         st.error("El CSV no contiene una columna disponible para analizar comentarios.")
         return
     column = st.selectbox("Columna que contiene el comentario", options=text_columns)
+    current_source_id = batch_source_id(payload, column)
     st.dataframe(
         frame.head(20),
         width="stretch",
@@ -542,7 +612,12 @@ def render_batch_controlled() -> None:
                 )
             progress.empty()
             pacing_status.empty()
-            st.session_state["batch_results"] = results
+            store_batch_results(
+                results,
+                source_id=current_source_id,
+                filename=getattr(uploaded, "name", None),
+                column=column,
+            )
             st.session_state["batch_summary"] = summary
             st.session_state["batch_summary_kind"] = (
                 "direct" if direct_config.enabled else
@@ -567,37 +642,10 @@ def render_batch_controlled() -> None:
         except Exception:
             st.error("No fue posible completar el análisis masivo.")
     results = get_batch_results()
-    if results is not None:
-        metrics = calculate_metrics(results)
-        display, column_config = prepare_batch_display(
-            results,
-            review_labels=REVIEW_STATE_LABELS,
-            translation_labels=TRANSLATION_STATE_LABELS,
-            direct_labels=DIRECT_REVIEW_STATE_LABELS,
-            error_labels=EXTERNAL_ERROR_LABELS,
-        )
-        heading, action = st.columns([4, 1], gap="medium", vertical_alignment="bottom")
-        with heading:
-            render_batch_results_header()
-        with action:
-            st.download_button(
-                "Descargar CSV procesado",
-                data=results.to_csv(index=False).encode("utf-8-sig"),
-                file_name="sentiment_analysis_results.csv",
-                mime="text/csv",
-                width="stretch",
-            )
-        render_batch_kpi_cards(metrics)
-        st.dataframe(
-            display.head(100),
-            width="stretch",
-            hide_index=True,
-            column_config=column_config,
-        )
-        summary = st.session_state.get("batch_summary")
-        summary_kind = st.session_state.get("batch_summary_kind")
-        if isinstance(summary, dict) and isinstance(summary_kind, str):
-            render_batch_traceability(results, summary, summary_kind)
+    if results is not None and st.session_state.get("batch_source_id") == current_source_id:
+        render_batch_results_view(results, controlled=True)
+    elif results is not None:
+        st.info("El archivo o la columna seleccionados son distintos del lote activo. Procesalos para reemplazar los resultados de la sesión.")
 
 
 def render_batch_traceability(results: pd.DataFrame, summary: dict, kind: str) -> None:
