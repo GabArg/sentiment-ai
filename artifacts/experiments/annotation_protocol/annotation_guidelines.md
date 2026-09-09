@@ -139,7 +139,14 @@ Un elogio no neutraliza automáticamente un defecto. “Me encanta el diseño, p
 
 ### Información insuficiente
 
-No inferir contexto. “Otra vez lo mismo” puede ser negativo por señal pragmática, pero si el lote exige literalidad estricta y no existe antecedente, registre `Ambiguo`. “Sí” o “No” sin pregunta asociada son `No evaluable`.
+Utilice solamente señales contenidas en el comentario y no reconstruya conversaciones o experiencias anteriores. Si una referencia ausente es necesaria para decidir entre polaridades razonables, marque `Ambiguo` y explique qué contexto falta.
+
+- “Otra vez lo mismo” → `Ambiguo`: sugiere repetición, pero el comentario no permite saber qué ocurrió ni resolver por sí solo la polaridad global.
+- “Como la vez anterior, volvieron a cobrarme de más” → `Negativo`: el comentario actual contiene una consecuencia desfavorable explícita; no hace falta conocer el episodio anterior.
+- “Sí” o “No” sin la pregunta original → `No evaluable`: la unidad aislada no permite identificar ninguna evaluación.
+- “Eso estuvo bien” → `Positivo`: aunque el referente no esté identificado, la valoración favorable está expresada en el comentario.
+
+Reserve `No evaluable` para unidades que no permiten identificar ninguna evaluación sin su contexto original. No lo use cuando el comentario contiene dos o más lecturas de polaridad defendibles; esos casos corresponden a `Ambiguo`.
 
 ## Subgrupos permitidos
 
