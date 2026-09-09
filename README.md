@@ -1,6 +1,6 @@
 # Sentiment AI
 
-**Análisis de Opiniones de Clientes**
+**Análisis de opiniones**
 
 Sentiment AI es una aplicación de portfolio para clasificar, explorar y comunicar feedback de clientes. Funciona con un modelo local por defecto y mantiene separadas las revisiones externas opcionales, con trazabilidad sobre el origen de cada resultado.
 
@@ -14,8 +14,8 @@ Sentiment AI es una aplicación de portfolio para clasificar, explorar y comunic
 - Procesar archivos CSV de hasta 10.000 filas, conservar su orden y exportar resultados en UTF-8.
 - Revisar distribución de sentimientos, confianza local y trazabilidad de las rutas utilizadas.
 - Ordenar n-gramas frecuentes del feedback negativo mediante un Pareto 80/20.
-- Generar un informe ejecutivo determinístico y descargarlo.
-- Solicitar, cuando está configurado, revisión externa o redacción asistida sobre datos minimizados.
+- Generar y descargar un informe ejecutivo con hechos calculados localmente.
+- Solicitar, cuando está configurado, una lectura asistida estructurada sobre datos agregados.
 
 El Pareto es léxico: muestra términos frecuentes, no categorías semánticas, causas verificadas ni severidad de negocio.
 
@@ -33,7 +33,20 @@ resultados → dashboard → términos/Pareto → informe → exportación
 
 El clasificador local ternario usa un vectorizador TF-IDF y una regresión logística congelados. `confidence` es la probabilidad asignada por `predict_proba` a la clase elegida; sirve como contexto técnico, no como garantía calibrada de acierto.
 
-Los modos externos están desactivados por defecto. Cuando una ruta habilitada envía texto, transmite únicamente el comentario anonimizado y no las otras columnas del CSV. El informe asistido recibe agregados minimizados. La anonimización reduce el riesgo, pero no garantiza desidentificación completa. Véase [Privacidad](docs/privacy.md).
+Los modos externos están desactivados por defecto. Cuando una ruta de revisión habilitada envía texto, transmite únicamente el comentario anonimizado y no las otras columnas del CSV. La anonimización reduce el riesgo, pero no garantiza una desidentificación completa ni elimina todo riesgo residual.
+
+El informe asistido utiliza una ruta distinta: Cerebras recibe hechos agregados y las capacidades del contrato, pero no el CSV completo, comentarios individuales ni las etiquetas textuales de los n-gramas. Véase [Privacidad](docs/privacy.md).
+
+### Informe en dos capas
+
+El informe ejecutivo separa evidencia y asistencia generativa:
+
+1. **Hechos determinísticos:** la aplicación calcula y presenta localmente el total analizado, la distribución de sentimientos, la confianza local y la concentración léxica, con unidades y denominadores explícitos.
+2. **Lectura asistida opcional:** Cerebras selecciona interpretaciones descriptivas, hipótesis no verificadas, recomendaciones condicionadas y necesidades de evidencia desde catálogos locales versionados. La respuesta debe respetar un contrato estructurado y no admite texto libre.
+
+La aplicación valida la selección y compone el documento final. El proveedor no redacta cifras, no modifica denominadores y no puede incorporar nuevas métricas, metas, plazos, responsables, impactos o categorías semánticas. Si la respuesta no cumple el contrato, se descarta y el informe determinístico permanece visible y descargable.
+
+El registro de hechos, la elegibilidad y el esquema de respuesta están implementados en [`src/report_contract.py`](src/report_contract.py); la composición local se encuentra en [`src/reporting.py`](src/reporting.py).
 
 ## Vistas de la aplicación
 
@@ -41,7 +54,7 @@ Los modos externos están desactivados por defecto. Cuando una ruta habilitada e
 - **Análisis masivo:** importación, configuración, vista previa, resultados y descarga.
 - **Dashboard:** volumen, distribución, confianza local y términos negativos frecuentes.
 - **Pareto 80/20:** concentración léxica del feedback clasificado como negativo.
-- **Informe ejecutivo:** brief determinístico; la variante asistida por IA es independiente y opcional.
+- **Informe ejecutivo:** hechos determinísticos y una lectura asistida opcional, validada y compuesta localmente.
 - **Acerca del proyecto:** arquitectura, metodología, privacidad, límites e historia.
 
 ## Ejecución local
@@ -80,7 +93,7 @@ HYBRID_WINDOW_SECONDS = 60
 EXTERNAL_RATE_LIMIT_SAFETY_SECONDS = 2.0
 ```
 
-Configurar la clave no activa por sí solo ninguna ruta. El informe asistido se solicita mediante una acción explícita. La precedencia completa de configuración está documentada en [Arquitectura](docs/architecture.md).
+Configurar la clave no activa por sí solo las rutas de revisión externa. El informe asistido se solicita mediante una acción explícita y utiliza únicamente su payload agregado. La precedencia completa de configuración está documentada en [Arquitectura](docs/architecture.md).
 
 ## Evaluación y reproducibilidad
 
@@ -109,7 +122,10 @@ python -m pip check
 
 - El modelo local fue entrenado con un corpus histórico y generaliza peor a neutrales factuales y redacciones fuera de dominio.
 - La confianza local no equivale a probabilidad calibrada de corrección.
-- El Pareto cuenta n-gramas; no detecta categorías de negocio ni causalidad.
+- El Pareto mide concentración léxica mediante frecuencias de n-gramas; no identifica comentarios únicos por tema, categorías semánticas ni causas verificadas.
+- Los negativos de alta confianza son una señal técnica del clasificador local, no una medida validada de severidad empresarial.
+- La lectura asistida selecciona contenido desde catálogos controlados, pero no valida causas, impactos ni objetivos de negocio.
+- Los resultados requieren revisión humana y la calidad del modelo debe medirse mediante evaluación independiente y métricas por clase.
 - Las validaciones híbrida y multilingüe son pequeñas y exploratorias.
 - Los modos externos dependen de disponibilidad, cuota, costo y límites del proveedor.
 - Los textos muy breves se marcan con idioma incierto en lugar de asumirlo.
